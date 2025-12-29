@@ -1,41 +1,57 @@
 const axios = require("axios");
 
-const nix = {
-  name: "ai",
-  version: "1.0.0",
-  aliases: ["ask", "kyo"],
-  description: "Assistant IA — Kyo Soma",
-  author: "Kyo Soma",
-  prefix: true,
-  category: "ai",
-  type: "anyone",
-  cooldown: 5,
-  guide: "ai <question>"
-};
+const Prefixes = [
+  "/ai",
+  "gear",
+  "préscilia ",
+  "+ai",
+  "shinmon",
+  "ai",
+  "ask"
+];
 
-async function onStart({ args, message }) {
-  try {
-    const prompt = args.join(" ");
+module.exports = {
+  config: {
+    name: "ai",
+    version: "1.2",
+    author: "OtinXSandip ✦ Decor by Kouakou",
+    longDescription: "Assistant IA — Kyo Soma",
+    category: "ai",
+    guide: {
+      en: "{p} <question>",
+    },
+  },
 
-    if (!prompt) {
-      return message.reply(
+  onStart: async function () {},
+
+  onChat: async function ({ event, message }) {
+    try {
+      const prefix = Prefixes.find(
+        (p) => event.body && event.body.toLowerCase().startsWith(p)
+      );
+      if (!prefix) return;
+
+      const prompt = event.body.substring(prefix.length).trim();
+
+      if (!prompt) {
+        return message.reply(
 `╭───〔 🔥 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 • 𝗔𝗜 〕───╮
 │
 │ ❓ Pose-moi une question
 │ ✍️ Exemple :
-│    ai C’est quoi une IA ?
+│    ai Explique-moi l’IA
 │
 ╰────────────────────╯`
+        );
+      }
+
+      const response = await axios.get(
+        `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`
       );
-    }
 
-    const response = await axios.get(
-      `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`
-    );
+      const answer = response.data.answer;
 
-    const answer = response.data.answer;
-
-    return message.reply(
+      await message.reply(
 `╭───〔 🔥 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 • 𝗔𝗜 〕───╮
 │
 │ 🧠 Question :
@@ -45,12 +61,11 @@ async function onStart({ args, message }) {
 │ ${answer}
 │
 ╰───〔 ⚡ 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 〕───╯`
-    );
+      );
 
-  } catch (error) {
-    console.error("Kyo Soma AI Error:", error.message);
-    return message.reply("❌ Kyo Soma est indisponible pour le moment.");
+    } catch (error) {
+      console.error("Kyo Soma AI Error:", error.message);
+      message.reply("❌ Kyo Soma est momentanément indisponible.");
+    }
   }
-}
-
-module.exports = { nix, onStart };
+};
