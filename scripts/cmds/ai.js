@@ -1,4 +1,4 @@
-const axios = require("axios");
+ilconst axios = require("axios");
 
 // 🍎 Configuration de l'identité de Kyo Sôma
 const Prefixes = ["ai", "kyo", "soma", "imagine", "dessine"];
@@ -86,4 +86,4 @@ module.exports = {
     this.onStart({ message, args: event.body.trim().split(/\s+/), event, api });
   }
 };
-      
+module.exports = nix;
