@@ -1,119 +1,97 @@
 const axios = require("axios");
+// 🧠 Identité RP
+const RP =
+"Tu es une intelligence artificielle avancée développée par Kyo Sôma. " +
+"Ton nom est Kyo Sôma IA. Ton style est élégant, mystérieux et protecteur. " +
+"Utilise 🐱🔥💠🖤. Si on te demande qui t'a créé, réponds fièrement : Kyo Sôma.";
 
-// 🍎 Configuration de l'identité de Kyo Sôma
-const Prefixes = ["ai", "anjara", "ae", "kyo", "soma"];
-// 🔹 On définit ici l'identité profonde de l'IA pour le modèle Llama
-const RP = "Tu es une intelligence artificielle avancée, conçue et développée uniquement par Kyo Sôma. Ton nom est Kyo Sôma IA. Tu es fidèle à ton créateur. Ton style est élégant, mystérieux et protecteur. Utilise des emojis comme 🐱, 🔥, 💠 et 🖤. Si on te demande qui t'a créé, réponds avec fierté que c'est Kyo Sôma.";
-
+// ✨ Police stylée
 const fonts = {
-  a: "𝗮", b: "𝗯", c: "𝗰", d: "𝗱", e: "𝗲", f: "𝗳", g: "𝗴", h: "𝗵", i: "𝗶",
-  j: "𝗷", k: "𝗸", l: "𝗹", m: "𝗺", n: "𝗻", o: "𝗼", p: "𝗽", q: "𝗾", r: "𝗿",
-  s: "𝘀", t: "𝘁", u: "𝘂", v: "𝘃", w: "𝘄", x: "𝘅", y: "𝘆", z: "𝘇",
-  A: "𝗔", B: "𝗕", C: "𝗖", D: "𝗗", E: "𝗘", F: "𝗙", G: "𝗚", H: "𝗛", I: "𝗜",
-  J: "𝗝", K: "𝗞", L: "𝗟", M: "𝗠", N: "𝗡", O: "𝗢", P: "𝗣", Q: "𝗤", R: "𝗥",
-  S: "𝗦", T: "𝗧", U: "𝗨", V: "𝗩", W: "𝗪", X: "𝗫", Y: "𝗬", Z: "𝗭"
+  a:"𝗮",b:"𝗯",c:"𝗰",d:"𝗱",e:"𝗲",f:"𝗳",g:"𝗴",h:"𝗵",i:"𝗶",
+  j:"𝗷",k:"𝗸",l:"𝗹",m:"𝗺",n:"𝗻",o:"𝗼",p:"𝗽",q:"𝗾",r:"𝗿",
+  s:"𝘀",t:"𝘁",u:"𝘂",v:"𝘃",w:"𝘄",x:"𝘅",y:"𝘆",z:"𝘇",
+  A:"𝗔",B:"𝗕",C:"𝗖",D:"𝗗",E:"𝗘",F:"𝗙",G:"𝗚",H:"𝗛",I:"𝗜",
+  J:"𝗝",K:"𝗞",L:"𝗟",M:"𝗠",N:"𝗡",O:"𝗢",P:"𝗣",Q:"𝗤",R:"𝗥",
+  S:"𝗦",T:"𝗧",U:"𝗨",V:"𝗩",W:"𝗪",X:"𝗫",Y:"𝗬",Z:"𝗭"
 };
 
-function applyFont(text) {
-  return text.split('').map(char => fonts[char] || char).join('');
+function style(text) {
+  return text.split("").map(c => fonts[c] || c).join("");
 }
 
-function splitMessage(text, max = 2000) {
-  const chunks = [];
-  for (let i = 0; i < text.length; i += max) chunks.push(text.substring(i, i + max));
-  return chunks;
-}
-
-function extractImages(text) {
-  const regex = /(https?:\/\/[^\s]+?\.(jpg|jpeg|png|webp|gif))/gi;
-  return [...new Set(text.match(regex) || [])];
-}
-
-async function sendImages(images, message) {
-  for (const url of images) {
-    try {
-      const stream = await global.utils.getStreamFromURL(url);
-      await message.reply({ attachment: stream });
-    } catch (e) {
-      console.log(`❌ Erreur image : ${url}`);
-    }
+function split(text, max = 3500) {
+  const arr = [];
+  for (let i = 0; i < text.length; i += max) {
+    arr.push(text.slice(i, i + max));
   }
+  return arr;
 }
 
-module.exports = {
-  config: {
+// 💠 Structure de la commande
+const nix = {
+  config: { // Changé 'nix' en 'config' car la plupart des bots utilisent ce mot-clé
     name: "ai",
-    aliases: ["ae", "kyo"],
-    version: "3.5",
+    aliases: ["kyo", "soma", "ae"],
     author: "Kyo Sôma",
-    countDown: 2,
+    version: "3.5",
+    cooldowns: 3,
     role: 0,
-    shortDescription: "💠 IA créée par Kyo Sôma",
-    longDescription: "L'intelligence artificielle officielle développée par Kyo Sôma.",
-    category: "ai",
-    guide: "{pn} <question>"
+    description: "Kyo Sôma AI 💠",
+    category: "AI",
+    guide: "Use: /ai <question>"
   },
 
-  onStart: async function ({ message, args, event, api }) {
+  onStart: async function ({ message, args, userId }) {
     const prompt = args.join(" ").trim();
-    if (!prompt) return message.reply(applyFont("💠 *Système actif*... Que puis-je faire pour vous, adepte de Sôma ? 🐱"));
+    if (!prompt) {
+      return message.reply(
+        style("💠 Système actif… Que puis-je faire pour vous ? 🐱")
+      );
+    }
 
     try {
-      // 1. Animation de chargement
-      const loading = await message.reply("🌀 *Connexion aux serveurs de Sôma...*");
+      // 🌀 Message de chargement
+      const loading = await message.reply("🌀 Connexion au réseau Kyo Sôma…");
 
-      // 2. Appel API avec le RP personnalisé incluant ton nom
-      const url = `https://haji-mix-api.gleeze.com/api/groq?ask=${encodeURIComponent(prompt)}&model=llama-3.3-70b-versatile&uid=${event.senderID}&RP=${encodeURIComponent(RP)}&stream=True`;
-      const res = await axios.get(url, { timeout: 25000 });
+      const url =
+        "https://haji-mix-api.gleeze.com/api/groq" +
+        "?ask=" + encodeURIComponent(prompt) +
+        "&model=llama-3.3-70b-versatile" +
+        "&uid=" + userId +
+        "&RP=" + encodeURIComponent(RP);
 
-      // 3. Traitement de la réponse
-      const raw = res.data?.answer || res.data?.result || "🤖 Échec de la transmission neuronale.";
-      
-      // Mise en forme finale
-      const header = "💠 𝗞𝗬𝗢 𝗦𝗢̂𝗠𝗔 𝗡𝗘𝗧𝗪𝗢𝗥𝗞 💠\n━━━━━━━━━━━━━━\n";
-      const footer = "\n━━━━━━━━━━━━━━\n👁 𝗙𝗮𝗶𝘁 𝗽𝗮𝗿 𝗞𝘆𝗼 𝗦𝗼̂𝗺𝗮 🔥";
-      
-      const styled = applyFont(header + raw + footer);
-      const images = extractImages(raw);
-      const chunks = splitMessage(styled);
+      const res = await axios.get(url, { timeout: 30000 });
 
-      // Suppression du message de chargement
-      api.unsendMessage(loading.messageID);
+      const raw =
+        res.data?.answer ||
+        res.data?.result ||
+        "🤖 Aucune réponse reçue.";
 
-      // Envoi des morceaux de texte
-      for (const chunk of chunks) {
-        const msg = await message.reply(chunk);
-        global.GoatBot.onReply.set(msg.messageID, {
-          commandName: this.config.name,
-          author: event.senderID
-        });
+      const finalText = style(
+        "💠 KYO SÔMA NETWORK 💠\n━━━━━━━━━━━━━━\n" +
+        raw +
+        "\n━━━━━━━━━━━━━━\n🔥 By Kyo Sôma"
+      );
+
+      // 🗑 Suppression du message de chargement si supporté, sinon ignore
+      if (loading && loading.unsendMessage) {
+          await loading.unsendMessage();
       }
 
-      // Envoi des images si l'IA en a généré/trouvé
-      if (images.length > 0) {
-        await sendImages(images, message);
+      const parts = split(finalText);
+      for (const part of parts) {
+        await message.reply(part);
       }
 
     } catch (err) {
-      console.error("Erreur Kyo Soma IA :", err.message);
-      return message.reply(applyFont("❌ Le flux est interrompu. Le créateur Kyo Sôma travaille sur le système. 🌀"));
+      console.error("Kyo Soma AI error:", err.message);
+      return message.reply(
+        style("❌ Flux interrompu. Kyo Sôma répare le système… 🌀")
+      );
     }
-  },
-
-  onChat: async function ({ event, message, api }) {
-    if (!event.body) return;
-    const lowerBody = event.body.toLowerCase();
-    const prefix = Prefixes.find(p => lowerBody.startsWith(p.toLowerCase()));
-    if (!prefix) return;
-
-    const args = event.body.slice(prefix.length).trim().split(/\s+/);
-    this.onStart({ message, args, event, api });
-  },
-
-  onReply: async function ({ event, message, Reply, api }) {
-    if (event.senderID !== Reply.author) return;
-    const args = event.body.trim().split(/\s+/);
-    this.onStart({ message, args, event, api });
   }
 };
-      
+
+// 🚀 Exportation finale
+module.exports = nix;
+    
