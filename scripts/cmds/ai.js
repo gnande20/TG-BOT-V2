@@ -18,18 +18,18 @@ const animations = [
 ];
 
 const nix = {
-  name: "ai",
+  name: "ai", // ✅ OBLIGATOIRE
   version: "4.2",
   aliases: ["ask", "kyo"],
   description: "Assistant IA — Kyo Sôma",
   author: "Kyo Sôma",
-  prefix: false, // 🔥 écoute le message sans préfixe strict
   category: "kyosoma",
+  prefix: false,
   type: "anyone",
   cooldown: 5,
   guide: "ai [ta question]",
 
-  onStart: async function ({ api, event, args, message }) {
+  onStart: async function ({ api, event, message }) {
     try {
       if (!event.body) return;
 
@@ -38,57 +38,24 @@ const nix = {
       if (!prefix) return;
 
       const prompt = event.body.slice(prefix.length).trim();
-
       if (!prompt) {
         return message.reply(
           "💡 *Système Kyo Sôma initialisé*\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "Pose ta question… et observe la vérité se révéler."
+          "Pose ta question…"
         );
       }
 
-      const lower = prompt.toLowerCase();
-
-      // 🔹 Question sur le créateur
-      if (
-        lower.includes("créateur") ||
-        lower.includes("createur") ||
-        lower.includes("qui t'a créé") ||
-        lower.includes("qui ta créé") ||
-        lower.includes("qui ta cree") ||
-        lower.includes("ton dev") ||
-        lower.includes("ton auteur")
-      ) {
-        const anim = animations[Math.floor(Math.random() * animations.length)];
-        await message.reply(`💠 *${anim}*`);
-
-        await new Promise(r => setTimeout(r, 2000));
-
-        return message.reply(
-          "💠 *Système Kyo Sôma* 💠\n" +
-          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-          "👁 Résultat de l’analyse :\n\n" +
-          "🔥 Mon créateur est **Kyo Sôma**, le maître de ce savoir.\n" +
-          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-          "⚡ Pose tes questions… et découvre la vérité."
-        );
-      }
-
-      // 🔹 Animation générale
       const anim = animations[Math.floor(Math.random() * animations.length)];
       await message.reply(`💠 *${anim}*`);
 
-      // 🔹 Appel API IA
       const response = await axios.get(
         `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`,
         { timeout: 15000 }
       );
 
-      const answer =
-        response.data?.answer ||
-        "Je n’ai pas de réponse pour l’instant.";
+      const answer = response.data?.answer || "Je n’ai pas de réponse.";
 
-      // 🔹 Réponse finale
       await message.reply(
         "💠 *Système Kyo Sôma* 💠\n" +
         "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -98,14 +65,11 @@ const nix = {
         "⚡ Observe et apprends."
       );
 
-    } catch (err) {
-      console.error("AI Error:", err);
-      await message.reply(
-        "❌ *Erreur du système Kyo Sôma*\n" +
-        "Impossible d’exécuter la requête. Réessaie plus tard."
-      );
+    } catch (e) {
+      console.error(e);
+      message.reply("❌ Erreur IA.");
     }
   }
 };
 
-module.exports = nix;
+module.exports = nix; // ✅ TRÈS IMPORTANT
