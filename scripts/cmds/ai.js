@@ -1,4 +1,5 @@
 const axios = require("axios");
+
 // 🧠 Identité RP
 const RP =
 "Tu es une intelligence artificielle avancée développée par Kyo Sôma. " +
@@ -27,9 +28,8 @@ function split(text, max = 3500) {
   return arr;
 }
 
-// 💠 Structure de la commande
 const nix = {
-  config: { // Changé 'nix' en 'config' car la plupart des bots utilisent ce mot-clé
+  nix: {
     name: "ai",
     aliases: ["kyo", "soma", "ae"],
     author: "Kyo Sôma",
@@ -42,6 +42,7 @@ const nix = {
   },
 
   onStart: async function ({ message, args, userId }) {
+
     const prompt = args.join(" ").trim();
     if (!prompt) {
       return message.reply(
@@ -50,7 +51,6 @@ const nix = {
     }
 
     try {
-      // 🌀 Message de chargement
       const loading = await message.reply("🌀 Connexion au réseau Kyo Sôma…");
 
       const url =
@@ -73,10 +73,7 @@ const nix = {
         "\n━━━━━━━━━━━━━━\n🔥 By Kyo Sôma"
       );
 
-      // 🗑 Suppression du message de chargement si supporté, sinon ignore
-      if (loading && loading.unsendMessage) {
-          await loading.unsendMessage();
-      }
+      await loading.delete?.();
 
       const parts = split(finalText);
       for (const part of parts) {
@@ -92,6 +89,4 @@ const nix = {
   }
 };
 
-// 🚀 Exportation finale
 module.exports = nix;
-    
