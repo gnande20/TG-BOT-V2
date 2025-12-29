@@ -13,16 +13,16 @@ const fonts = {
 
 function style(text) { return text.split("").map(c => fonts[c] || c).join(""); }
 
-// Déclaration précise de l'objet nix
 const nix = {
-  config: {
-    name: "ai",
-    aliases: ["kyo", "soma"],
-    author: "Kyo Sôma",
-    version: "4.0",
-    category: "AI",
-    description: "Kyo Sôma IA 💠"
-  },
+  // Cette partie est cruciale pour corriger l'erreur "Missing nix.name"
+  name: "ai",
+  description: "Kyo Sôma IA 💠",
+  author: "Kyo Sôma",
+  version: "4.0",
+  category: "AI",
+  role: 0,
+  cooldowns: 5,
+  aliases: ["kyo", "soma"],
 
   onStart: async function ({ message, args, event }) {
     const prompt = args.join(" ").trim();
@@ -38,5 +38,6 @@ const nix = {
   }
 };
 
-module.exports = nix; // Exportation impérative à la fin
+// Vérifiez que cette ligne est bien présente à la fin
+module.exports = nix;
 
