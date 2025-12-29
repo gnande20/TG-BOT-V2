@@ -1,106 +1,111 @@
 const axios = require("axios");
 
 const Prefixes = [
+  "ai",
   "/ai",
+  "+ai",
+  "ask",
   "gear",
   "préscilia",
-  "+ai",
-  "shinmon",
-  "ai",
-  "ask",
+  "shinmon"
 ];
 
 const animations = [
-  "🧠 Synchronisation du flux d’Ego...",
-  "⚡ Activation du système Blue-Lock...",
-  "🔥 Analyse neuronale en cours...",
-  "💥 Chargement du mental de champion...",
-  "🌀 Calcul des probabilités de victoire...",
-  "👁 Lecture de la volonté du joueur...",
-  "⚙️ Traitement des données tactiques...",
+  "🧠 Réflexion profonde...",
+  "⚡ Activation du flux créatif...",
+  "🔥 Analyse de la conscience...",
+  "🌀 Traitement des données en cours...",
 ];
 
-module.exports = {
-  config: {
-    name: "ai",
-    version: "4.1",
-    author: "Camille x Muguru Bachira & Kyo Sôma",
-    longDescription: "Mini Bot IA en style Blue-Lock avec animation 💥",
-    category: "blue-lock",
-    guide: {
-      en: "{p}ai [ta question]",
-    },
-  },
+const nix = {
+  name: "ai",
+  version: "4.2",
+  aliases: ["ask", "kyo"],
+  description: "Assistant IA — Kyo Sôma",
+  author: "Kyo Sôma",
+  prefix: false, // 🔥 écoute le message sans préfixe strict
+  category: "kyosoma",
+  type: "anyone",
+  cooldown: 5,
+  guide: "ai [ta question]",
 
-  onStart: async function () {},
-
-  onChat: async function ({ api, event, message }) {
+  onStart: async function ({ api, event, args, message }) {
     try {
-      const prefix = Prefixes.find(
-        (p) => event.body && event.body.toLowerCase().startsWith(p)
-      );
+      if (!event.body) return;
+
+      const body = event.body.toLowerCase();
+      const prefix = Prefixes.find(p => body.startsWith(p));
       if (!prefix) return;
 
-      const prompt = event.body.substring(prefix.length).trim();
+      const prompt = event.body.slice(prefix.length).trim();
+
       if (!prompt) {
         return message.reply(
-          "💢 *EGO SYSTEM INITIALISÉ* 💢\n" +
+          "💡 *Système Kyo Sôma initialisé*\n" +
           "━━━━━━━━━━━━━━━━━━\n" +
-          "Parle, *joueur sans ego*... Que veux-tu apprendre ? ⚽"
+          "Pose ta question… et observe la vérité se révéler."
         );
       }
 
-      // 🔹 Réponse spéciale si on parle du créateur
       const lower = prompt.toLowerCase();
+
+      // 🔹 Question sur le créateur
       if (
         lower.includes("créateur") ||
         lower.includes("createur") ||
         lower.includes("qui t'a créé") ||
-        lower.includes("qui ta cree") ||
         lower.includes("qui ta créé") ||
-        lower.includes("qui est ton père") ||
+        lower.includes("qui ta cree") ||
         lower.includes("ton dev") ||
         lower.includes("ton auteur")
       ) {
+        const anim = animations[Math.floor(Math.random() * animations.length)];
+        await message.reply(`💠 *${anim}*`);
+
+        await new Promise(r => setTimeout(r, 2000));
+
         return message.reply(
-          "👁 *EGO SYSTEM RESPONSE*\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "💠 Mon créateur est **Kyo Sôma**, le véritable porteur de l’Ego 💥"
+          "💠 *Système Kyo Sôma* 💠\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "👁 Résultat de l’analyse :\n\n" +
+          "🔥 Mon créateur est **Kyo Sôma**, le maître de ce savoir.\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "⚡ Pose tes questions… et découvre la vérité."
         );
       }
 
-      // Animation Blue-Lock
+      // 🔹 Animation générale
       const anim = animations[Math.floor(Math.random() * animations.length)];
-      await message.reply(`🌀 *MINI BOT - ${anim}*`);
+      await message.reply(`💠 *${anim}*`);
 
-      // Requête API GPT
+      // 🔹 Appel API IA
       const response = await axios.get(
         `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`,
         { timeout: 15000 }
       );
 
-      const answer = response.data.answer || "Je ne peux pas calculer ça, joueur...";
+      const answer =
+        response.data?.answer ||
+        "Je n’ai pas de réponse pour l’instant.";
 
-      // Réponse stylisée
-      await message.reply({
-        body:
-          "💠 *MINI BOT - EGO SYSTEM ONLINE* 💠\n" +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          `⚽ **Question :** ${prompt}\n\n` +
-          `🔥 **Réponse :** ${answer}\n` +
-          "━━━━━━━━━━━━━━━━━━\n" +
-          "👁 *Libère ton ego... ou reste un figurant !* 💢",
-      });
-    } catch (error) {
-      console.error("Erreur AI :", error.message);
+      // 🔹 Réponse finale
       await message.reply(
-        "❌ *Erreur du système BLUE-LOCK*\n" +
-        "Impossible d’exécuter l’ordre. Réessaie plus tard 🌀"
+        "💠 *Système Kyo Sôma* 💠\n" +
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+        `💬 Question : ${prompt}\n\n` +
+        `📝 Réponse : ${answer}\n` +
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+        "⚡ Observe et apprends."
+      );
+
+    } catch (err) {
+      console.error("AI Error:", err);
+      await message.reply(
+        "❌ *Erreur du système Kyo Sôma*\n" +
+        "Impossible d’exécuter la requête. Réessaie plus tard."
       );
     }
-  },
+  }
 };
 
-// 🚀 Exportation finale
 module.exports = nix;
-    
