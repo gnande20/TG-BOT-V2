@@ -1,0 +1,53 @@
+const fs = require("fs");
+
+const nix = {
+  name: "file",
+  version: "1.0.0",
+  aliases: ["files"],
+  description: "Envoyer un fichier du bot",
+  author: "Kyo Soma",
+  prefix: true,
+  category: "OWNER",
+  type: "owner",
+  cooldown: 5,
+  guide: "file <nom_du_fichier>"
+};
+
+async function onStart({ args, api, event, message }) {
+  // 🔐 UID autorisés
+  const permission = [
+    "8286999004",
+    ""
+  ];
+
+  if (!permission.includes(event.senderID)) {
+    return message.reply(
+      "👁️‍🗨️ ACCÈS REFUSÉ\nSeul Kyo Soma est autorisé."
+    );
+  }
+
+  const fileName = args[0];
+  if (!fileName) {
+    return message.reply("❌ Donne le nom du fichier.\nEx: file ai");
+  }
+
+  const filePath = __dirname + `/${fileName}.js`;
+
+  if (!fs.existsSync(filePath)) {
+    return message.reply(`❌ Fichier introuvable : ${fileName}.js`);
+  }
+
+  const fileContent = fs.readFileSync(filePath, "utf8");
+
+  return message.reply(
+`╭───〔 📂 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 • 𝗙𝗜𝗟𝗘 〕───╮
+│
+│ 📄 Fichier : ${fileName}.js
+│
+│ ${fileContent}
+│
+╰────────────────────╯`
+  );
+}
+
+module.exports = { nix, onStart };
