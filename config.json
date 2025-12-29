@@ -2,17 +2,17 @@
   "devMode": true,
   "timeZone": "Asia/Dhaka",
   "prefix": "!",
-  "symbols": "●",
+  "symbols": "€",
   "owner": {
-    "name": "YOUR_NAME",
+    "name": "kyo soma bot ⚽",
     "facebook": "FACEBOOK_ID",
     "username": "TG_USERNAME"
   },
   "admin": [
-    "ADMIN_UID"
+    "8286999004"
   ],
   "vip": [
-    "VIP_UID"
+    "8286999004"
   ],
   "loadCmds": true,
   "loadEvents": true,
