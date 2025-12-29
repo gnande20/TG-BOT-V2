@@ -14,7 +14,7 @@ module.exports = {
   config: {
     name: "ai",
     version: "1.2",
-    author: "OtinXSandip ✦ Decor by Kouakou",
+    author: "OtinXSandip ✦ Decor by Kyo soma",
     longDescription: "Assistant IA — Kyo Soma",
     category: "ai",
     guide: {
