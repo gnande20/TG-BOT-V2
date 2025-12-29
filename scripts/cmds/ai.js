@@ -3,28 +3,35 @@ const axios = require("axios");
 const Prefixes = [
   "/ai",
   "gear",
-  "préscilia ",
+  "préscilia",
   "+ai",
   "shinmon",
   "ai",
-  "ask"
+  "ask",
+];
+
+const animations = [
+  "🧠 Réflexion profonde...",
+  "⚡ Activation du flux créatif...",
+  "🔥 Analyse de la conscience...",
+  "🌀 Traitement des données en cours...",
 ];
 
 module.exports = {
   config: {
     name: "ai",
-    version: "1.2",
-    author: "OtinXSandip ✦ Decor by Kyo soma",
-    longDescription: "Assistant IA — Kyo Soma",
-    category: "ai",
+    version: "4.2",
+    author: "Kyo Sôma",
+    longDescription: "Mini Bot IA avec style Kyo Sôma et animations",
+    category: "kyosoma",
     guide: {
-      en: "{p} <question>",
+      en: "{p}ai [ta question]",
     },
   },
 
   onStart: async function () {},
 
-  onChat: async function ({ event, message }) {
+  onChat: async function ({ api, event, message }) {
     try {
       const prefix = Prefixes.find(
         (p) => event.body && event.body.toLowerCase().startsWith(p)
@@ -32,40 +39,70 @@ module.exports = {
       if (!prefix) return;
 
       const prompt = event.body.substring(prefix.length).trim();
-
       if (!prompt) {
         return message.reply(
-`╭───〔 🔥 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 • 𝗔𝗜 〕───╮
-│
-│ ❓ Pose-moi une question
-│ ✍️ Exemple :
-│    ai Explique-moi l’IA
-│
-╰────────────────────╯`
+          "💡 *Système Kyo Sôma initialisé*\n" +
+          "━━━━━━━━━━━━━━━━━━\n" +
+          "Pose ta question… et observe la vérité se révéler."
         );
       }
 
+      // 🔹 Réponse spéciale si on parle du créateur
+      const lower = prompt.toLowerCase();
+      if (
+        lower.includes("créateur") ||
+        lower.includes("createur") ||
+        lower.includes("qui t'a créé") ||
+        lower.includes("qui ta cree") ||
+        lower.includes("qui ta créé") ||
+        lower.includes("qui est ton père") ||
+        lower.includes("ton dev") ||
+        lower.includes("ton auteur")
+      ) {
+        const anim = animations[Math.floor(Math.random() * animations.length)];
+        await message.reply(`💠 *${anim}*`);
+
+        await new Promise((r) => setTimeout(r, 2000));
+
+        return message.reply(
+          "💠 *Système Kyo Sôma* 💠\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "👁 Résultat de l’analyse :\n\n" +
+          "🔥 Mon créateur est **Kyo Sôma**, le maître de ce savoir.\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "⚡ Pose tes questions… et découvre la vérité."
+        );
+      }
+
+      // Animation générale
+      const anim = animations[Math.floor(Math.random() * animations.length)];
+      await message.reply(`💠 *${anim}*`);
+
+      // Requête API GPT
       const response = await axios.get(
-        `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`
+        `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`,
+        { timeout: 15000 }
       );
 
-      const answer = response.data.answer;
+      const answer = response.data.answer || "Je n’ai pas de réponse à ça pour l’instant.";
 
-      await message.reply(
-`╭───〔 🔥 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 • 𝗔𝗜 〕───╮
-│
-│ 🧠 Question :
-│ ${prompt}
-│
-│ 💬 Réponse :
-│ ${answer}
-│
-╰───〔 ⚡ 𝗞𝗬𝗢 𝗦𝗢𝗠𝗔 〕───╯`
-      );
+      // Réponse stylisée Kyo Sôma
+      await message.reply({
+        body:
+          "💠 *Système Kyo Sôma* 💠\n" +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          `💬 Question : ${prompt}\n\n` +
+          `📝 Réponse : ${answer}\n` +
+          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+          "⚡ Observe et apprends."
+      });
 
     } catch (error) {
-      console.error("Kyo Soma AI Error:", error.message);
-      message.reply("❌ Kyo Soma est momentanément indisponible.");
+      console.error("Erreur AI :", error.message);
+      await message.reply(
+        "❌ *Erreur du système Kyo Sôma*\n" +
+        "Impossible d’exécuter la requête. Réessaie plus tard."
+      );
     }
-  }
+  },
 };
