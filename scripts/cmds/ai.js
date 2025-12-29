@@ -1,9 +1,9 @@
 const axios = require("axios");
 
-// 🧠 Identité de l'IA
-const RP = "Tu es Kyo Sôma IA, créé par Kyo Sôma. Style : protecteur, rebelle, 🐱🔥💠.";
+// 🧠 Configuration de l'identité
+const RP = "Tu es Kyo Sôma IA, créé par Kyo Sôma. Ton style est protecteur et rebelle. Utilise des emojis 🐱, 🔥, 💠. Tu réponds fièrement que ton créateur est Kyo Sôma.";
 
-// ✨ Police stylisée
+// ✨ Système de police stylisée
 const fonts = {
   a:"𝗮",b:"𝗯",c:"𝗰",d:"𝗱",e:"𝗲",f:"𝗳",g:"𝗴",h:"𝗵",i:"𝗶",
   j:"𝗷",k:"𝗸",l:"𝗹",m:"𝗺",n:"𝗻",o:"𝗼",p:"𝗽",q:"𝗾",r:"𝗿",
@@ -13,36 +13,73 @@ const fonts = {
   S:"𝗦",T:"𝗧",U:"𝗨",V:"𝗩",W:"𝗪",X:"𝗫",Y:"𝗬",Z:"𝗭"
 };
 
-function style(text) { 
-  return text.split("").map(c => fonts[c] || c).join(""); 
+function style(text) {
+  return text.split("").map(c => fonts[c] || c).join("");
 }
 
-// 💠 Objet de commande principal
-const nixCommand = {
+// 💠 Structure de la commande NIX
+const nix = {
   nix: {
-    name: "ai",
-    aliases: ["kyo", "soma"],
+    name: "ai", // Le nom de la commande (obligatoire pour éviter le SKIP)
+    aliases: ["kyo", "soma", "ae"],
     author: "Kyo Sôma",
-    version: "4.0",
+    version: "4.5",
+    cooldowns: 5,
+    role: 0,
+    description: "Kyo Sôma IA avec génération d'images 💠",
     category: "AI",
-    description: "Kyo Sôma IA 💠",
-    guide: "/ai <question>"
+    guide: "/ai <question> ou /ai imagine <description>"
   },
 
-  onStart: async function ({ message, args, event }) {
+  onStart: async function ({ message, args, userId, event }) {
     const prompt = args.join(" ").trim();
-    if (!prompt) return message.reply(style("💠 Posez votre question... 🐱"));
+    
+    if (!prompt) {
+      return message.reply(style("💠 Système actif… Que puis-je faire pour vous ? 🐱"));
+    }
 
+    const lower = prompt.toLowerCase();
+
+    // 🎨 SECTION GÉNÉRATION D'IMAGES
+    if (lower.startsWith("imagine") || lower.startsWith("dessine")) {
+      try {
+        const query = prompt.replace(/imagine|dessine/i, "").trim();
+        await message.reply("🎨 *Kyo Sôma prépare ses pinceaux...*");
+        
+        const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000)}`;
+        const stream = await global.utils.getStreamFromURL(imgUrl);
+        
+        return message.reply({
+          body: style(`💠 𝗜𝗺𝗮𝗴𝗲 𝗴𝗲́𝗻𝗲́𝗿𝗲́𝗲\n🎨 𝗣𝗿𝗼𝗺𝗽𝘁: ${query}`),
+          attachment: stream
+        });
+      } catch (e) {
+        return message.reply("❌ Erreur lors de la création de l'image.");
+      }
+    }
+
+    // 🤖 SECTION INTELLIGENCE ARTIFICIELLE
     try {
-      const res = await axios.get(`https://haji-mix-api.gleeze.com/api/groq?ask=${encodeURIComponent(prompt)}&RP=${encodeURIComponent(RP)}`);
-      const answer = res.data?.answer || "🤖 Pas de réponse.";
-      return message.reply(style(`💠 KYO SÔMA\n━━━━━━━━━━━━━━\n${answer}\n━━━━━━━━━━━━━━\n🔥 By Kyo Sôma`));
+      const loading = await message.reply("🌀 Connexion au réseau Kyo Sôma…");
+
+      const url = `https://haji-mix-api.gleeze.com/api/groq?ask=${encodeURIComponent(prompt)}&model=llama-3.3-70b-versatile&uid=${userId}&RP=${encodeURIComponent(RP)}`;
+      const res = await axios.get(url, { timeout: 30000 });
+
+      const response = res.data?.answer || res.data?.result || "🤖 Aucune réponse reçue.";
+      const finalText = style(`💠 𝗞𝗬𝗢 𝗦𝗢̂𝗠𝗔 𝗡𝗘𝗧𝗪𝗢𝗥𝗞 💠\n━━━━━━━━━━━━━━\n${response}\n━━━━━━━━━━━━━━\n🔥 𝗕𝘆 𝗞𝘆𝗼 𝗦𝗼̂𝗺𝗮`);
+
+      // Suppression du message de chargement si possible
+      if (loading && loading.unsendMessage) await loading.unsendMessage();
+
+      return message.reply(finalText);
+
     } catch (err) {
-      return message.reply(style("❌ Erreur de connexion au flux."));
+      console.error("Erreur Kyo Soma IA:", err.message);
+      return message.reply(style("❌ Flux interrompu. Kyo Sôma répare le système… 🌀"));
     }
   }
 };
 
-// 🚀 Exportation vitale pour le chargement
-module.exports = nixai;
-
+// 🚀 Exportation finale
+module.exports = nix;
+    
