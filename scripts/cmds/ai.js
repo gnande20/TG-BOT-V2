@@ -1,7 +1,9 @@
 const axios = require("axios");
 
+// 🧠 Identité de l'IA
 const RP = "Tu es Kyo Sôma IA, créé par Kyo Sôma. Style : protecteur, rebelle, 🐱🔥💠.";
 
+// ✨ Police stylisée
 const fonts = {
   a:"𝗮",b:"𝗯",c:"𝗰",d:"𝗱",e:"𝗲",f:"𝗳",g:"𝗴",h:"𝗵",i:"𝗶",
   j:"𝗷",k:"𝗸",l:"𝗹",m:"𝗺",n:"𝗻",o:"𝗼",p:"𝗽",q:"𝗾",r:"𝗿",
@@ -11,18 +13,21 @@ const fonts = {
   S:"𝗦",T:"𝗧",U:"𝗨",V:"𝗩",W:"𝗪",X:"𝗫",Y:"𝗬",Z:"𝗭"
 };
 
-function style(text) { return text.split("").map(c => fonts[c] || c).join(""); }
+function style(text) { 
+  return text.split("").map(c => fonts[c] || c).join(""); 
+}
 
-const nix = {
-  // Cette partie est cruciale pour corriger l'erreur "Missing nix.name"
-  name: "ai",
-  description: "Kyo Sôma IA 💠",
-  author: "Kyo Sôma",
-  version: "4.0",
-  category: "AI",
-  role: 0,
-  cooldowns: 5,
-  aliases: ["kyo", "soma"],
+// 💠 Objet de commande principal
+const nixCommand = {
+  nix: {
+    name: "ai",
+    aliases: ["kyo", "soma"],
+    author: "Kyo Sôma",
+    version: "4.0",
+    category: "AI",
+    description: "Kyo Sôma IA 💠",
+    guide: "/ai <question>"
+  },
 
   onStart: async function ({ message, args, event }) {
     const prompt = args.join(" ").trim();
@@ -38,6 +43,6 @@ const nix = {
   }
 };
 
-// Vérifiez que cette ligne est bien présente à la fin
-module.exports = nix;
+// 🚀 Exportation vitale pour le chargement
+module.exports = nixai;
 
