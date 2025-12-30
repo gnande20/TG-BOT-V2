@@ -1,41 +1,44 @@
-const fs = require("fs");
-const path = require("path");
+const groupesCache = {};
 
 const nix = {
-  name: "file",
-  aliases: ["files"],
-  version: "1.0",
-  author: "Mahir Tahsan",
+  name: "pannel",
+  version: "2.5",
+  aliases: ["panel", "adminpanel"],
+  description: "Panel admin secret style Blue Lock",
+  author: "Nthang",
   prefix: true,
-  category: "owner",
+  category: "admin",
   type: "anyone",
   cooldown: 5,
-  description: "Send bot script",
-  guide: "file <filename> — Ex: file filename"
+  guide: "pannel [action]"
 };
 
-async function onStart({ message, args, msg, api }) {
-  const permission = ["8286999004",""];
-  const senderID = msg.senderID;
+async function onStart({ message, args, api, event, usersData, threadsData, msg }) {
+  const senderID = (msg && msg.senderID) || (event && event.senderID);
+  if (!senderID) return message.reply("❌ Impossible de récupérer ton ID.");
 
-  if (!permission.includes(senderID)) {
+  // 🔹 Liste des admins (ajout de ton ID)
+  const adminIDs = new Set(["8286999004"]);
+  if (!adminIDs.has(senderID)) return message.reply("❌⛔ Tu n'as pas accès à ce panel. Le maître l'a verrouillé 😌");
+
+  const action = args[0];
+  if (!action) {
     return message.reply(
-      "❌ Tu n'as pas l'autorisation pour utiliser cette commande."
+      `👑───── BLUE LOCK PANEL ─────👑\n` +
+      `💠 Actions disponibles : solde, add, remove, reset, top, annonce, groupes, quitte, block, unblock, blocklist, diffuse, diffuseall\n` +
+      `💠 Tape : \`pannel [action]\` pour exécuter une action`
     );
   }
 
-  const fileName = args[0];
-  if (!fileName) {
-    return message.reply("❌ Veuillez fournir le nom du fichier.");
+  // Exemple de liste des commandes
+  if (action === "list") {
+    return message.reply(
+      `👑───── COMMANDES ADMIN ─────👑\n` +
+      `💠 pannel solde [uid]\n💠 pannel add [uid] [montant]\n💠 pannel remove [uid] [montant]\n💠 pannel annonce [message]\n💠 pannel groupes\n💠 pannel quitte [numéro]\n💠 pannel block [uid]\n💠 pannel unblock [uid]\n💠 pannel blocklist\n💠 pannel top\n💠 pannel reset\n💠 diffuse [numéro] [message]\n💠 diffuseall [message]`
+    );
   }
 
-  const filePath = path.join(__dirname, `${fileName}.js`);
-  if (!fs.existsSync(filePath)) {
-    return message.reply(`❌ Fichier introuvable : ${fileName}.js`);
-  }
-
-  const fileContent = fs.readFileSync(filePath, "utf8");
-  message.reply({ body: fileContent });
+  // Ici, tu peux ajouter toutes tes autres actions comme solde, add, remove...
 }
 
 module.exports = { nix, onStart };
