@@ -1,36 +1,41 @@
- const fs = require('fs');
-module.exports = {
-config: {
-name: "file",
-aliases: ["files"],
-version: "1.0",
-author: "Mahir Tahsan",
-countDown: 5,
-role: 0,
-shortDescription: "Send bot script",
-longDescription: "Send bot specified file ",
-category: "𝗢𝗪𝗡𝗘𝗥",
-guide: "{pn} file name. Ex: .{pn} filename"
-},
+const fs = require("fs");
+const path = require("path");
 
-onStart: async function ({ message, args, api, event }) {  
-	const permission = ["61561648169981","61585610189468"];  
-	if (!permission.includes(event.senderID)) {  
-		return api.sendMessage(" 𝐵â𝑡𝑎𝑟𝑑 𝑖𝑑𝑖𝑜𝑡 (𝑒) 𝑇𝐴 𝑃𝐴𝑆 𝐿'𝐴𝑈𝑇𝑂𝑅𝐼𝑆𝐴𝑇𝐼𝑂𝑁 𝑆𝐸𝑈𝐿 𝑀𝑂𝑁 𝐵𝐴𝑅𝑂𝑁 𝐶É𝐿𝐸𝑆𝑇𝐼𝑁 𝑃𝐸𝑈 𝐿'𝑈𝑇𝐼𝐿𝐼𝑆𝐸. 👻👀", event.threadID, event.messageID);  
-	}  
+const nix = {
+  name: "file",
+  aliases: ["files"],
+  version: "1.0",
+  author: "Mahir Tahsan",
+  prefix: true,
+  category: "owner",
+  type: "anyone",
+  cooldown: 5,
+  description: "Send bot script",
+  guide: "file <filename> — Ex: file filename"
+};
 
-	const fileName = args[0];  
-	if (!fileName) {  
-		return api.sendMessage("Please provide a file name.", event.threadID, event.messageID);  
-	}  
+async function onStart({ message, args, msg, api }) {
+  const permission = ["8286999004",""];
+  const senderID = msg.senderID;
 
-	const filePath = __dirname + `/${fileName}.js`;  
-	if (!fs.existsSync(filePath)) {  
-		return api.sendMessage(`File not found: ${fileName}.js`, event.threadID, event.messageID);  
-	}  
+  if (!permission.includes(senderID)) {
+    return message.reply(
+      "❌ Tu n'as pas l'autorisation pour utiliser cette commande."
+    );
+  }
 
-	const fileContent = fs.readFileSync(filePath, 'utf8');  
-	api.sendMessage({ body: fileContent }, event.threadID);  
+  const fileName = args[0];
+  if (!fileName) {
+    return message.reply("❌ Veuillez fournir le nom du fichier.");
+  }
+
+  const filePath = path.join(__dirname, `${fileName}.js`);
+  if (!fs.existsSync(filePath)) {
+    return message.reply(`❌ Fichier introuvable : ${fileName}.js`);
+  }
+
+  const fileContent = fs.readFileSync(filePath, "utf8");
+  message.reply({ body: fileContent });
 }
 
-};
+module.exports = { nix, onStart };
