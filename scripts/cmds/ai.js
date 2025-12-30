@@ -17,9 +17,7 @@ async function getAIResponse(input, userName, history) {
   try {
     const res = await axios.get("https://arychauhann.onrender.com/api/gemini-proxy2", {
       params: {
-        prompt: `Tu es Kyo Soma (Fruits Basket).
-Tu es calme, respectueux et honnête.
-Ton créateur est Kyo Soma.
+        prompt: `Tu es une IA créé par Kyo soma et tu te souviens des messages précédents.
 
 Historique :
 ${history}
