@@ -15,30 +15,23 @@ function saveMemory(memory) {
 }
 
 // ================= API =================
-async function getAIResponse(prompt, userName, history) {
+async function getAIResponse(input, userName, history) {
   try {
-    const res = await axios.get(
-      "https://arychauhann.onrender.com/api/gemini-proxy2",
-      {
-        params: {
-          prompt: `Tu es une IA créé par Kyo Soma et tu te souviens des messages précédents.
+    const res = await axios.get("https://arychauhann.onrender.com/api/gemini-proxy2", {
+      params: {
+        prompt: `Tu es une IA créé par Kyo soma et tu te souviens des messages précédents.
 
 Historique :
 ${history}
 
-Utilisateur (${userName}) : ${prompt}`
-        },
-        timeout: 20000
-      }
-    );
+Utilisateur (${userName}) : ${input}`
+      },
+      timeout: 20000
+    });
 
-    return (
-      res.data?.result ||
-      res.data?.reply ||
-      "Je n’ai rien à dire pour l’instant."
-    );
+    return res.data?.result || res.data?.reply || "Je ne peux pas répondre pour l’instant.";
   } catch {
-    return "Je rencontre un problème technique.";
+    return "❌ Une erreur est survenue lors de la requête AI.";
   }
 }
 
@@ -49,13 +42,15 @@ const creatorRegex =
 // ================= CMD NIX =================
 module.exports = {
   nix: {
-    name: "ai", // ✅ VRAIE CMD
-    version: "6.0",
+    name: "ai",
+    aliases: ["kyo", "kyosoma", "kyo soma"],
+    version: "1.0",
     author: "Kyo Soma",
-    description: "Parler avec Kyo Soma (IA avec mémoire)",
     category: "ai",
+    shortDescription: "Parler avec Kyo Soma (IA avec mémoire)",
+    longDescription: "Pose des questions à Kyo Soma, il se souvient des messages précédents.",
     guide: "ai <question>",
-    prefix: true, // ✅ OBLIGATOIRE
+    prefix: true,
     cooldown: 5,
     type: "anyone",
 
@@ -65,14 +60,11 @@ module.exports = {
 
       if (!input) {
         return message.reply(
-          "😾 Kyo Soma :\n\n" +
-          "Utilisation :\n" +
-          "👉 ai <ta question>"
+          "😾 Kyo Soma :\n\nUtilisation : ai <ta question>"
         );
       }
 
       let memory = loadMemory();
-
       if (!memory[userId]) {
         memory[userId] = {
           name: "ami",
@@ -80,23 +72,25 @@ module.exports = {
         };
       }
 
+      // Réponse spéciale sur le créateur
       if (creatorRegex.test(input)) {
         return message.reply(
-          "😾 Kyo Soma :\n\nMon créateur est **Kyo Soma**."
+          "😾 Kyo Soma :\n\nJe n’oublierai jamais que mon créateur est **Kyo Soma**."
         );
       }
 
+      // Mise à jour du nom utilisateur si disponible
       api.getUserInfo(userId, async (err, data) => {
         if (!err && data[userId]?.name) {
           memory[userId].name = data[userId].name;
         }
 
+        // Ajout à l'historique
         memory[userId].history.push(`Utilisateur : ${input}`);
-        if (memory[userId].history.length > 5)
-          memory[userId].history.shift();
-
+        if (memory[userId].history.length > 5) memory[userId].history.shift();
         saveMemory(memory);
 
+        // Récupération de la réponse AI
         const reply = await getAIResponse(
           input,
           memory[userId].name,
