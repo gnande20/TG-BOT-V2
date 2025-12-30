@@ -1,75 +1,114 @@
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
-const Prefixes = [
-  "ai",
-  "/ai",
-  "+ai",
-  "ask",
-  "gear",
-  "préscilia",
-  "shinmon"
-];
+// ================= MÉMOIRE =================
+const memoryFile = path.join(__dirname, "../../data/kyosoma_memory.json");
 
-const animations = [
-  "🧠 Réflexion profonde...",
-  "⚡ Activation du flux créatif...",
-  "🔥 Analyse de la conscience...",
-  "🌀 Traitement des données en cours...",
-];
+function loadMemory() {
+  if (!fs.existsSync(memoryFile)) return {};
+  return JSON.parse(fs.readFileSync(memoryFile, "utf8"));
+}
 
+function saveMemory(memory) {
+  fs.writeFileSync(memoryFile, JSON.stringify(memory, null, 2));
+}
+
+// ================= API =================
+async function getAIResponse(prompt, userName, history) {
+  try {
+    const res = await axios.get(
+      "https://arychauhann.onrender.com/api/gemini-proxy2",
+      {
+        params: {
+          prompt: `Tu es Kyo Soma (Fruits Basket).
+Tu es calme, respectueux et honnête.
+Tu respectes toujours les utilisateurs.
+Tu te souviens des messages précédents.
+Ton créateur est Kyo Soma.
+
+Historique :
+${history}
+
+Utilisateur (${userName}) : ${prompt}`
+        },
+        timeout: 20000
+      }
+    );
+
+    return (
+      res.data?.result ||
+      res.data?.reply ||
+      "Je n’ai rien à dire pour l’instant."
+    );
+  } catch {
+    return "Je rencontre un problème technique.";
+  }
+}
+
+// ================= REGEX =================
+const creatorRegex =
+  /(qui\s+(t'?a|t’a)\s+cr(é|e)é|ton\s+cr(é|e)ateur|qui\s+ta\s+fait|qui\s+est\s+ton\s+createur)/i;
+
+// ================= CMD NIX =================
 module.exports = {
-  nix: { // ✅ TG-BOT-V2 CHERCHE CET OBJET
-    name: "ai", // ✅ OBLIGATOIRE
-    version: "4.2",
-    aliases: ["ask", "kyo"],
-    description: "Assistant IA — Kyo Sôma",
-    author: "Kyo Sôma",
-    category: "kyosoma",
-    prefix: false,
-    type: "anyone",
+  nix: {
+    name: "ai", // ✅ VRAIE CMD
+    version: "6.0",
+    author: "Kyo Soma",
+    description: "Parler avec Kyo Soma (IA avec mémoire)",
+    category: "ai",
+    guide: "ai <question>",
+    prefix: true, // ✅ OBLIGATOIRE
     cooldown: 5,
-    guide: "ai [ta question]",
+    type: "anyone",
 
-    onStart: async function ({ api, event, message }) {
-      try {
-        if (!event.body) return;
+    onStart: async function ({ api, event, args, message }) {
+      const input = args.join(" ").trim();
+      const userId = event.senderID;
 
-        const body = event.body.toLowerCase();
-        const prefix = Prefixes.find(p => body.startsWith(p));
-        if (!prefix) return;
+      if (!input) {
+        return message.reply(
+          "😾 Kyo Soma :\n\n" +
+          "Utilisation :\n" +
+          "👉 ai <ta question>"
+        );
+      }
 
-        const prompt = event.body.slice(prefix.length).trim();
-        if (!prompt) {
-          return message.reply(
-            "💡 *Système Kyo Sôma initialisé*\n" +
-            "━━━━━━━━━━━━━━━━━━\n" +
-            "Pose ta question…"
-          );
+      let memory = loadMemory();
+
+      if (!memory[userId]) {
+        memory[userId] = {
+          name: "ami",
+          history: []
+        };
+      }
+
+      if (creatorRegex.test(input)) {
+        return message.reply(
+          "😾 Kyo Soma :\n\nMon créateur est **Kyo Soma**."
+        );
+      }
+
+      api.getUserInfo(userId, async (err, data) => {
+        if (!err && data[userId]?.name) {
+          memory[userId].name = data[userId].name;
         }
 
-        const anim = animations[Math.floor(Math.random() * animations.length)];
-        await message.reply(`💠 *${anim}*`);
+        memory[userId].history.push(`Utilisateur : ${input}`);
+        if (memory[userId].history.length > 5)
+          memory[userId].history.shift();
 
-        const response = await axios.get(
-          `https://sandipbaruwal.onrender.com/gpt?prompt=${encodeURIComponent(prompt)}`,
-          { timeout: 15000 }
+        saveMemory(memory);
+
+        const reply = await getAIResponse(
+          input,
+          memory[userId].name,
+          memory[userId].history.join("\n")
         );
 
-        const answer = response.data?.answer || "Je n’ai pas de réponse.";
-
-        await message.reply(
-          "💠 *Système Kyo Sôma* 💠\n" +
-          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-          `💬 Question : ${prompt}\n\n` +
-          `📝 Réponse : ${answer}\n` +
-          "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-          "⚡ Observe et apprends."
-        );
-
-      } catch (e) {
-        console.error("AI ERROR:", e);
-        message.reply("❌ Erreur IA.");
-      }
+        message.reply(`😾 Kyo Soma :\n\n${reply}`);
+      });
     }
   }
 };
