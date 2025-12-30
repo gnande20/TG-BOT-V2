@@ -21,11 +21,7 @@ async function getAIResponse(prompt, userName, history) {
       "https://arychauhann.onrender.com/api/gemini-proxy2",
       {
         params: {
-          prompt: `Tu es Kyo Soma (Fruits Basket).
-Tu es calme, respectueux et honnête.
-Tu respectes toujours les utilisateurs.
-Tu te souviens des messages précédents.
-Ton créateur est Kyo Soma.
+          prompt: `Tu es une IA créé par Kyo Soma et tu te souviens des messages précédents.
 
 Historique :
 ${history}
