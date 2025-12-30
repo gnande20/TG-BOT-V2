@@ -2,10 +2,16 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
+// ================= MÉMOIRE =================
 const memoryFile = path.join(__dirname, "../../data/kyosoma_memory.json");
 
 function loadMemory() {
-  if (!fs.existsSync(memoryFile)) return {};
+  // Création automatique du dossier et fichier si non existants
+  if (!fs.existsSync(memoryFile)) {
+    fs.mkdirSync(path.dirname(memoryFile), { recursive: true });
+    fs.writeFileSync(memoryFile, "{}");
+    return {};
+  }
   return JSON.parse(fs.readFileSync(memoryFile, "utf8"));
 }
 
@@ -13,11 +19,12 @@ function saveMemory(memory) {
   fs.writeFileSync(memoryFile, JSON.stringify(memory, null, 2));
 }
 
+// ================= API =================
 async function getAIResponse(input, userName, history) {
   try {
     const res = await axios.get("https://arychauhann.onrender.com/api/gemini-proxy2", {
       params: {
-        prompt: `Tu es une IA créé par Kyo soma et tu te souviens des messages précédents.
+        prompt: `Tu es une IA créé par Kyo Soma et tu te souviens des messages précédents.
 
 Historique :
 ${history}
@@ -32,9 +39,11 @@ Utilisateur (${userName}) : ${input}`
   }
 }
 
+// ================= REGEX =================
 const creatorRegex =
   /(qui\s+(t'?a|t’a)\s+cr(é|e)é|ton\s+cr(é|e)ateur|qui\s+ta\s+fait|qui\s+est\s+ton\s+createur)/i;
 
+// ================= NIX =================
 const nix = {
   name: "ai",
   version: "1.0",
