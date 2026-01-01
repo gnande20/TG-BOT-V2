@@ -1,74 +1,95 @@
-module.exports = {
-  nix: {
-    name: 'help',
-    prefix: false,
-    role: 0,
-    category: 'utility',
-    aliases: ['commands'],
-    author: 'ArYAN',
-    version: '0.0.1',
-  },
+const { getPrefix } = global.utils;
+const { commands, aliases } = global.GoatBot;
 
-  async onStart({ message, args }) {
-    if (!global.teamnix || !global.teamnix.cmds) {
-      return message.reply("Command collection is not available.");
+const nix = {
+  name: "help",
+  version: "2026 Edition",
+  aliases: ["menu", "cmds"],
+  description: "Affiche la liste des commandes",
+  author: "Testsuya Kuroko",
+  prefix: true,
+  category: "info",
+  type: "anyone",
+  cooldown: 5,
+  guide: "help [commande]"
+};
+
+async function onStart({ bot, args, message }) {
+  const prefix = await getPrefix(message.threadID);
+
+  // 🎆 MENU PRINCIPAL DU NOUVEL AN
+  if (!args[0]) {
+    const categories = {};
+    let count = 0;
+
+    let msg = `
+🎇✨━━━━━━━━━━━━━━━━━━✨🎇
+       🎉 𝗡𝗢𝗨𝗩𝗘𝗟 𝗔𝗡 𝗠𝗘𝗡𝗨 🎉
+🎇✨━━━━━━━━━━━━━━━━━━✨🎇
+
+🎆 Prefix : ${prefix}
+`;
+
+    for (const [name, cmd] of commands) {
+      if (!cmd?.nix) continue;
+
+      const cat = cmd.nix.category || "other";
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push(name);
+      count++;
     }
-    const commands = global.teamnix.cmds;
 
-    if (args.length) {
-      const query = args[0].toLowerCase();
-      const cmd = [...commands.values()].find(
-        c => c.nix.name === query || (c.nix.aliases && c.nix.aliases.includes(query))
-      );
-      if (!cmd) return message.reply(`No command called “${query}”.`);
-      const info = cmd.nix;
-      const detail = `
-╭─────────────────────◊
-│ ▸ Command: ${info.name}
-│ ▸ Aliases: ${info.aliases?.length ? info.aliases.join(', ') : 'None'}
-│ ▸ Can use: ${info.role === 2 ? 'Admin Only' : info.role === 1 ? 'VIP Only' : 'All Users'}
-│ ▸ Category: ${info.category?.toUpperCase() || 'UNCATEGORIZED'}
-│ ▸ PrefixEnabled?: ${info.prefix === false ? 'False' : 'True'}
-│ ▸ Author: ${info.author || 'Unknown'}
-│ ▸ Version: ${info.version || 'N/A'}
-╰─────────────────────◊
-      `.trim();
-      return message.reply(detail);
+    for (const cat of Object.keys(categories).sort()) {
+      msg += `\n🎊 ${cat.toUpperCase()}\n`;
+      for (const name of categories[cat].sort()) {
+        msg += `▫️ ${name}\n`;
+      }
     }
-
-    const cats = {};
-    [...commands.values()]
-      .filter((command, index, self) =>
-        index === self.findIndex((c) => c.nix.name === command.nix.name)
-      )
-      .forEach(c => {
-        const cat = c.nix.category || 'UNCATEGORIZED';
-        if (!cats[cat]) {
-          cats[cat] = [];
-        }
-        if (!cats[cat].includes(c.nix.name)) {
-          cats[cat].push(c.nix.name);
-        }
-      });
-
-    let msg = '';
-    Object.keys(cats).sort().forEach(cat => {
-      msg += `╭─────『 ${cat.toUpperCase()} 』\n`;
-      cats[cat].sort().forEach(n => {
-        msg += `│ ▸ ${n}\n`;
-      });
-      msg += `╰──────────────\n`;
-    });
 
     msg += `
-╭──────────────◊
-│ » Total commands: ${[...new Set(commands.values())].length}
-│ » A Powerful Telegram bot
-│ » Aryan Rayhan
-╰──────────◊
-「 Nix bot 」
-    `.trim();
+✨━━━━━━━━━━━━━━━━━━✨
+🎆 ${count} commandes disponibles
+🎉 ${prefix}help <commande>
+🎇 Bonne année 2026 ! 🎇
+✨━━━━━━━━━━━━━━━━━━✨
+`;
 
-    await message.reply(msg);
+    return bot.sendMessage(msg, message.threadID, message.messageID);
   }
-};
+
+  // 🎁 INFO COMMANDE
+  const cmdName = args[0].toLowerCase();
+  const command =
+    commands.get(cmdName) ||
+    (aliases.get(cmdName) && commands.get(aliases.get(cmdName)));
+
+  if (!command || !command.nix) {
+    return bot.sendMessage(
+      "❌ Commande introuvable 🎆",
+      message.threadID,
+      message.messageID
+    );
+  }
+
+  const cfg = command.nix;
+
+  const resp = `
+🎇✨━━━━━━━━━━━━━━━━━━✨🎇
+       🎉 INFO COMMANDE 🎉
+🎇✨━━━━━━━━━━━━━━━━━━✨🎇
+
+🔹 Nom      : ${cfg.name}
+🔹 Version  : ${cfg.version}
+🔹 Auteur   : ${cfg.author}
+🔹 Catégorie: ${cfg.category}
+🔹 Accès    : ${cfg.type}
+🔹 Cooldown : ${cfg.cooldown}s
+
+📌 Utilisation
+${prefix}${cfg.guide || cfg.name}
+`;
+
+  return bot.sendMessage(resp, message.threadID, message.messageID);
+}
+
+module.exports = { nix, onStart };
