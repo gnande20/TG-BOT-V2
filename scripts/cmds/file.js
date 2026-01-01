@@ -1,44 +1,56 @@
-const groupesCache = {};
+const fs = require('fs');
 
 const nix = {
-  name: "pannel",
-  version: "2.5",
-  aliases: ["panel", "adminpanel"],
-  description: "Panel admin secret style Blue Lock",
-  author: "Nthang",
+  name: "file",
+  aliases: ["files"],
+  version: "2026 Edition",
+  author: "Testsuya Kuroko",
   prefix: true,
-  category: "admin",
+  category: "𝗢𝗪𝗡𝗘𝗥",
   type: "anyone",
   cooldown: 5,
-  guide: "pannel [action]"
+  description: "Send a specified bot file",
+  guide: "file [filename]"
 };
 
-async function onStart({ message, args, api, event, usersData, threadsData, msg }) {
-  const senderID = (msg && msg.senderID) || (event && event.senderID);
-  if (!senderID) return message.reply("❌ Impossible de récupérer ton ID.");
+async function onStart({ bot, args, message, api, event, msg }) {
+  // ✅ Corrige le senderID
+  const senderID = event?.senderID || message?.senderID || msg?.senderID;
 
-  // 🔹 Liste des admins (ajout de ton ID)
-  const adminIDs = new Set(["8286999004"]);
-  if (!adminIDs.has(senderID)) return message.reply("❌⛔ Tu n'as pas accès à ce panel. Le maître l'a verrouillé 😌");
-
-  const action = args[0];
-  if (!action) {
-    return message.reply(
-      `👑───── BLUE LOCK PANEL ─────👑\n` +
-      `💠 Actions disponibles : solde, add, remove, reset, top, annonce, groupes, quitte, block, unblock, blocklist, diffuse, diffuseall\n` +
-      `💠 Tape : \`pannel [action]\` pour exécuter une action`
+  const permission = ["61561648169981","61585610189468"];
+  if (!permission.includes(senderID)) {
+    return api.sendMessage(
+      "🎇✨ 𝐸𝑟𝑟𝑒𝑢𝑟 𝐴𝑢𝑡ℎ𝑜𝑟𝑖𝑠𝑎𝑡𝑖𝑜𝑛 ✨🎇\n" +
+      "❌ Vous n'avez pas la permission de faire cela !\n" +
+      "🎉 Seul mon maître peut utiliser cette commande.",
+      message.threadID,
+      message.messageID
     );
   }
 
-  // Exemple de liste des commandes
-  if (action === "list") {
-    return message.reply(
-      `👑───── COMMANDES ADMIN ─────👑\n` +
-      `💠 pannel solde [uid]\n💠 pannel add [uid] [montant]\n💠 pannel remove [uid] [montant]\n💠 pannel annonce [message]\n💠 pannel groupes\n💠 pannel quitte [numéro]\n💠 pannel block [uid]\n💠 pannel unblock [uid]\n💠 pannel blocklist\n💠 pannel top\n💠 pannel reset\n💠 diffuse [numéro] [message]\n💠 diffuseall [message]`
+  const fileName = args[0];
+  if (!fileName) {
+    return api.sendMessage(
+      "🎆 Veuillez fournir un nom de fichier. Ex: file filename",
+      message.threadID,
+      message.messageID
     );
   }
 
-  // Ici, tu peux ajouter toutes tes autres actions comme solde, add, remove...
+  const filePath = __dirname + `/${fileName}.js`;
+  if (!fs.existsSync(filePath)) {
+    return api.sendMessage(
+      `❌ Fichier introuvable : ${fileName}.js`,
+      message.threadID,
+      message.messageID
+    );
+  }
+
+  const fileContent = fs.readFileSync(filePath, 'utf8');
+  return api.sendMessage(
+    { body: `🎉 Voici le contenu du fichier ${fileName}.js :\n\n${fileContent}` },
+    message.threadID
+  );
 }
 
 module.exports = { nix, onStart };
