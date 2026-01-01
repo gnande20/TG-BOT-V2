@@ -1,267 +1,133 @@
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
+const axios = require("axios");
+const { execSync } = require("child_process");
+const fs = require("fs-extra");
+const path = require("path");
+const cheerio = require("cheerio");
+const { client } = global;
 
-const configPath = path.join(__dirname, '..', '..', 'config.json');
+const { configCommands } = global.GoatBot;
+const { log, loading, removeHomeDir } = global.utils;
 
-function loadConfig() {
+function getDomain(url) {
+  const regex = /^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:/\n]+)/im;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
+function isURL(str) {
   try {
-    const configData = fs.readFileSync(configPath, 'utf-8');
-    const config = JSON.parse(configData);
-    if (!config.admin) {
-      config.admin = [];
-    }
-    return config;
-  } catch (error) {
-    console.error("Error loading config.json:", error);
-    return { admin: [] };
+    new URL(str);
+    return true;
+  } catch (e) {
+    return false;
   }
 }
 
-module.exports = {
-  nix: {
-    name: 'cmd',
-    author: 'ArYAN',
-    version: '0.0.1',
-    description: 'Manage commands: install, loadall, load, unload',
-    usage: 'cmd <install|loadall|load|unload> [args]',
-    admin: true,
-    vip: true,
-    category: 'Admin',
-    prefix: false,
-    aliases: ['cm']
-  },
-
-  async onStart({ message, args, userId }) {
-    const config = loadConfig();
-
-    if (!config.admin.includes(String(userId))) {
-      return message.reply("❌ | Only bot's admin can use the command");
-    }
-    
-    try {
-      const subcmd = args[0]?.toLowerCase();
-      const cmdFolder = path.join(__dirname, './');
-      
-      if (!global.teamnix || !global.teamnix.cmds) {
-          global.teamnix = { cmds: new Map() };
-      }
-      const commands = global.teamnix.cmds;
-
-      if (!subcmd) {
-        return message.reply('● Usage: `cmd <install|loadall|load|unload> [args]`');
-      }
-
-      function clearRequireCache(filePath) {
-        try {
-          const resolvedPath = require.resolve(filePath);
-          if (require.cache[resolvedPath]) {
-            delete require.cache[resolvedPath];
-          }
-        } catch (err) {
-          console.error('Failed to clear require cache:', err);
-        }
-      }
-
-      function registerCommand(cmd, commandsCollection) {
-        if (!cmd || !cmd.nix || typeof cmd.nix.name !== 'string' || typeof cmd.onStart !== 'function') {
-          return false;
-        }
-        const nameLower = cmd.nix.name.toLowerCase();
-        commandsCollection.set(nameLower, cmd);
-        if (Array.isArray(cmd.nix.aliases)) {
-          for (const alias of cmd.nix.aliases) {
-            const aliasLower = alias.toLowerCase();
-            if (!commandsCollection.has(aliasLower)) {
-              commandsCollection.set(aliasLower, cmd);
-            }
-          }
-        }
-        return true;
-      }
-
-      if (subcmd === 'install') {
-        const fileName = args[1];
-        const url = args[2];
-        
-        if (!fileName || !url || !fileName.endsWith('.js')) {
-          return message.reply('● Usage: `cmd install <filename.js> <URL>`\nExample: `cmd install link.js http://goatbin.vercel.app/raw/BCb5F-IC6`');
-        }
-
-        let code;
-        try {
-          const response = await axios.get(url);
-          code = response.data;
-        } catch (err) {
-          return message.reply(`❌ Failed to fetch code from URL.\nReason: ${err.message}`);
-        }
-
-        const filePath = path.join(cmdFolder, fileName);
-        if (fs.existsSync(filePath)) {
-          return message.reply(`❌ Command file '${fileName}' already exists. Use 'cmd reload' or 'cmd unload' first.`);
-        }
-        
-        try {
-          fs.writeFileSync(filePath, code, 'utf-8');
-        } catch (err) {
-          console.error('Write File Error:', err);
-          return message.reply(`❌ Failed to write command file.\nReason: ${err.message}`);
-        }
-        
-        try {
-          clearRequireCache(filePath);
-          const loadedCmd = require(filePath);
-          if (!registerCommand(loadedCmd, commands)) {
-            fs.unlinkSync(filePath);
-            return message.reply('❌ Invalid command format. Installation aborted.');
-          }
-          return message.reply(`✅ | Installed command "${loadedCmd.nix.name}" successfully from URL.\nCommand file is saved at /scripts/cmds/${fileName}`);
-        } catch (err) {
-          console.error('Install Load Error:', err);
-          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-          return message.reply(`❌ Failed to load command.\nReason: ${err.message}`);
-        }
-      }
-
-      else if (subcmd === 'loadall') {
-        if (!commands) return message.reply('❌ Commands collection unavailable.');
-        commands.clear();
-        
-        const jsFiles = fs.readdirSync(cmdFolder).filter(f => f.endsWith('.js'));
-        const txtFiles = fs.readdirSync(cmdFolder).filter(f => f.endsWith('.txt'));
-        let loaded = 0;
-        let failed = 0;
-        let failedMessages = '';
-
-        for (const file of jsFiles) {
-          try {
-            const filePath = path.join(cmdFolder, file);
-            clearRequireCache(filePath);
-            const cmd = require(filePath);
-            if (registerCommand(cmd, commands)) {
-              loaded++;
-            } else {
-              failed++;
-              failedMessages += ` ❗ ${file.replace('.js', '')} => Invalid command format\n`;
-            }
-          } catch (err) {
-            failed++;
-            console.error(`LoadAll Error (.js ${file}):`, err);
-            failedMessages += ` ❗ ${file.replace('.js', '')} => ${err.name}: ${err.message}\n`;
-          }
-        }
-
-        for (const file of txtFiles) {
-          const txtPath = path.join(cmdFolder, file);
-          const jsName = file.replace(/\.txt$/, '.js');
-          const jsPath = path.join(cmdFolder, jsName);
-          try {
-            fs.renameSync(txtPath, jsPath);
-            clearRequireCache(jsPath);
-            const cmd = require(jsPath);
-            if (registerCommand(cmd, commands)) {
-              loaded++;
-            } else {
-              failed++;
-              failedMessages += ` ❗ ${jsName.replace('.js', '')} => Invalid command format in renamed file\n`;
-            }
-          } catch (err) {
-            failed++;
-            console.error(`LoadAll Error (.txt ${file}):`, err);
-            failedMessages += ` ❗ ${file.replace('.txt', '')} => ${err.name}: ${err.message}\n`;
-          }
-        }
-        
-        let replyMessage = `✅ | Loaded successfully (${loaded}) command`;
-        if (failed > 0) {
-          replyMessage += `\n❌ | Failed to load (${failed}) command\n${failedMessages}👀 | Open console to see error details`;
-        }
-        return message.reply(replyMessage);
-      }
-
-      else if (subcmd === 'unload') {
-        const cmdName = args[1]?.toLowerCase();
-        if (!cmdName) return message.reply('❌ Specify a command name to unload.');
-        const targetCmd = commands.get(cmdName);
-        if (!targetCmd) return message.reply(`❌ Command '${cmdName}' not found.`);
-        const originalName = targetCmd.nix.name.toLowerCase();
-        const jsFilePath = path.join(cmdFolder, `${originalName}.js`);
-        const txtFilePath = path.join(cmdFolder, `${originalName}.txt`);
-        if (!fs.existsSync(jsFilePath)) {
-          return message.reply(`❌ Command file '${originalName}.js' not found. Already unloaded?`);
-        }
-        try {
-          const aliases = [originalName, ...targetCmd.nix.aliases.map(a => a.toLowerCase())];
-          for (const alias of aliases) {
-            commands.delete(alias);
-          }
-          clearRequireCache(jsFilePath);
-          fs.renameSync(jsFilePath, txtFilePath);
-          return message.reply(`✅ | Unloaded command "${originalName}" successfully`);
-        } catch (err) {
-          console.error('Unload Command Error:', err);
-          return message.reply(`❌ Failed to unload '${originalName}'.\nReason: ${err.message}`);
-        }
-      }
-
-      else if (subcmd === 'load') {
-        const cmdName = args[1]?.toLowerCase();
-        if (!cmdName) return message.reply('❌ Specify a command name to load.');
-        let jsPath = path.join(cmdFolder, `${cmdName}.js`);
-        const txtPath = path.join(cmdFolder, `${cmdName}.txt`);
-        if (!fs.existsSync(jsPath)) {
-          if (fs.existsSync(txtPath)) {
-            try {
-              fs.renameSync(txtPath, jsPath);
-            } catch (err) {
-              return message.reply(`❌ Failed to rename .txt to .js\nReason: ${err.message}`);
-            }
-          } else {
-            return message.reply('❌ Command file not found.');
-          }
-        }
-        try {
-          clearRequireCache(jsPath);
-          const cmd = require(jsPath);
-          if (!registerCommand(cmd, commands)) throw new Error('Invalid command format');
-          return message.reply(`✅ | Loaded command "${cmdName}" successfully`);
-        } catch (err) {
-          console.error('Load Command Error:', err);
-          return message.reply(`❌ Failed to load command '${cmdName}'.\nReason: ${err.message}`);
-        }
-      }
-      
-      else if (subcmd === 'reload') {
-        const cmdName = args[1]?.toLowerCase();
-        if (!cmdName) return message.reply('❌ Specify a command to reload.');
-        const targetCmd = commands.get(cmdName);
-        if (!targetCmd) return message.reply(`❌ Command '${cmdName}' not found.`);
-        const originalName = targetCmd.nix.name.toLowerCase();
-        const filePath = path.join(cmdFolder, `${originalName}.js`);
-        if (!fs.existsSync(filePath)) {
-          return message.reply(`❌ Command file '${originalName}.js' not found.`);
-        }
-        try {
-          const aliases = [originalName, ...targetCmd.nix.aliases.map(a => a.toLowerCase())];
-          for (const alias of aliases) {
-            commands.delete(alias);
-          }
-          clearRequireCache(filePath);
-          const cmd = require(filePath);
-          if (!registerCommand(cmd, commands)) throw new Error('Invalid command format after reload');
-          return message.reply(`🔄 | Reloaded command "${originalName}" successfully`);
-        } catch (err) {
-          console.error('Reload Command Error:', err);
-          return message.reply(`❌ Failed to reload command '${originalName}'.\nReason: ${err.message}`);
-        }
-      }
-
-      else {
-        return message.reply('❌ Unknown subcommand. Use install, loadall, unload, load, or reload.');
-      }
-    } catch (err) {
-      console.error('CMD Handler Error:', err);
-      message.reply(`❌ An unexpected error occurred.\nReason: ${err.message}`);
-    }
-  }
+const nix = {
+  name: "cmd",
+  aliases: [],
+  version: "2026 Edition",
+  author: "Testsuya Kuroko",
+  prefix: true,
+  category: "OWNER",
+  type: "admin",
+  cooldown: 5,
+  description: "Manage your command files",
+  guide: "cmd <load/loadAll/unload/install> [options]"
 };
+
+async function onStart({ args, message, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, event, getLang, msg }) {
+  const senderID = event?.senderID || message?.senderID || msg?.senderID;
+
+  // ⚠️ Vérification permission admin
+  const botAdmins = [/* ajoute ici les IDs admin */];
+  if (!botAdmins.includes(senderID)) {
+    return message.reply("🎇✨ Erreur : vous n'avez pas la permission d'utiliser cette commande ✨🎇");
+  }
+
+  const { unloadScripts, loadScripts } = global.utils;
+
+  try {
+    // ——— LOAD
+    if (args[0] == "load" && args.length == 2) {
+      if (!args[1]) return message.reply(getLang("missingFileName"));
+      const infoLoad = loadScripts("cmds", args[1], log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang);
+      return message.reply(infoLoad.status == "success"
+        ? `✅ [2026] Commande "${args[1]}" chargée avec succès 🎉`
+        : `❌ [2026] Échec du chargement "${args[1]}" : ${infoLoad.error.name} - ${infoLoad.error.message}`);
+    }
+
+    // ——— LOADALL
+    else if ((args[0] || "").toLowerCase() == "loadall") {
+      const fileNeedToLoad = fs.readdirSync(__dirname)
+        .filter(file => file.endsWith(".js") && !file.match(/(eg|dev)\.js$/g))
+        .map(f => f.replace(".js", ""));
+      const arraySucces = [];
+      const arrayFail = [];
+
+      for (const fileName of fileNeedToLoad) {
+        const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang);
+        infoLoad.status == "success" ? arraySucces.push(fileName) : arrayFail.push(`${fileName} => ${infoLoad.error.name}: ${infoLoad.error.message}`);
+      }
+
+      let msg = "";
+      if (arraySucces.length > 0) msg += `✅ [2026] Chargé avec succès ${arraySucces.length} commandes 🎉\n`;
+      if (arrayFail.length > 0) msg += `❌ [2026] Échec pour ${arrayFail.length} commandes :\n${arrayFail.join("\n")}`;
+      return message.reply(msg);
+    }
+
+    // ——— UNLOAD
+    else if (args[0] == "unload") {
+      if (!args[1]) return message.reply(getLang("missingCommandNameUnload"));
+      const infoUnload = unloadScripts("cmds", args[1], configCommands, getLang);
+      return message.reply(infoUnload.status == "success"
+        ? `✅ [2026] Commande "${args[1]}" déchargée 🎆`
+        : `❌ [2026] Échec du déchargement "${args[1]}" : ${infoUnload.error.name} - ${infoUnload.error.message}`);
+    }
+
+    // ——— INSTALL
+    else if (args[0] == "install") {
+      let url = args[1];
+      let fileName = args[2];
+      let rawCode;
+
+      if (!url || !fileName) return message.reply(getLang("missingUrlCodeOrFileName"));
+
+      if (url.match(/(https?:\/\/(?:www\.|(?!www)))/)) {
+        if (!fileName.endsWith(".js")) return message.reply(getLang("missingFileNameInstall"));
+
+        const domain = getDomain(url);
+        if (!domain) return message.reply(getLang("invalidUrl"));
+
+        if (domain == "pastebin.com") url = url.replace(/https:\/\/pastebin\.com\/(?!raw\/)(.*)/, "https://pastebin.com/raw/$1").replace(/\/$/, "");
+        else if (domain == "github.com") url = url.replace(/https:\/\/github\.com\/(.*)\/blob\/(.*)/, "https://raw.githubusercontent.com/$1/$2");
+
+        rawCode = (await axios.get(url)).data;
+
+        if (domain == "savetext.net") {
+          const $ = cheerio.load(rawCode);
+          rawCode = $("#content").text();
+        }
+      } else {
+        rawCode = event.body.slice(event.body.indexOf('install') + 8);
+      }
+
+      if (!rawCode) return message.reply(getLang("invalidUrlOrCode"));
+
+      if (fs.existsSync(path.join(__dirname, fileName))) return message.reply(getLang("alreadExist"));
+
+      const infoLoad = loadScripts("cmds", fileName, log, configCommands, api, threadModel, userModel, dashBoardModel, globalModel, threadsData, usersData, dashBoardData, globalData, getLang, rawCode);
+      return message.reply(infoLoad.status == "success"
+        ? `✅ [2026] Commande "${fileName}" installée avec succès 🎉`
+        : `❌ [2026] Échec de l'installation "${fileName}" : ${infoLoad.error.name} - ${infoLoad.error.message}`);
+    }
+
+    else return message.SyntaxError();
+
+  } catch (err) {
+    console.error(err);
+    return message.reply(`❌ [2026] Une erreur est survenue : ${err.message}`);
+  }
+}
+
+module.exports = { nix, onStart };
