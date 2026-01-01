@@ -1,91 +1,51 @@
-const { getStreamsFromAttachment } = global.utils;
-
 const nix = {
   name: "notification",
+  version: "1.7",
   aliases: ["notify", "noti"],
-  version: "2026 Edition",
+  description: "Envoyer une notification à tous les groupes",
   author: "Testsuya Kuroko",
   prefix: true,
-  category: "OWNER",
-  type: "admin",
+  category: "owner",
+  type: "anyone",
   cooldown: 5,
-  description: "Send notification from admin to all groups",
-  guide: "notification <message>",
-  envConfig: {
-    delayPerGroup: 250
-  }
+  guide: "{pn} <message> - Envoie un message à tous les groupes"
 };
 
-async function onStart({ message, api, event, args, commandName, envCommands, threadsData, getLang, msg }) {
-  const senderID = event?.senderID || message?.senderID || msg?.senderID;
-  const { delayPerGroup } = envCommands[commandName];
+async function onStart({ message, args, event, api, threadsData, getLang, commandName }) {
+  const utils = global.utils;
+  if (!utils) return message.reply("⚠️ Erreur : utils non disponible.");
+  const { getStreamsFromAttachment } = utils;
 
-  // ⚠️ Vérification permission admin
-  const botAdmins = [/* ajoute ici les IDs admin */];
-  if (!botAdmins.includes(senderID)) {
-    return message.reply("🎇✨ Erreur : vous n'avez pas la permission d'envoyer une notification ✨🎇");
-  }
+  if (!args[0]) return message.reply("⚠️ Veuillez entrer un message à envoyer.");
 
-  if (!args[0]) return message.reply(getLang("missingMessage"));
+  const allThreads = (await threadsData.getAll()).filter(t => t.isGroup && t.members.some(m => m.userID === api.getCurrentUserID()));
+  message.reply(`⏳ Envoi de la notification à ${allThreads.length} groupes...`);
 
-  const formSend = {
-    body: `🎉 Nouvel An 2026 🎉\n────────────────\n${args.join(" ")}`,
-    attachment: await getStreamsFromAttachment(
-      [
-        ...(event?.attachments || []),
-        ...(event?.messageReply?.attachments || [])
-      ].filter(item => ["photo", "png", "animated_image", "video", "audio"].includes(item.type))
-    )
+  const attachments = await getStreamsFromAttachment(
+    [...(event.attachments || []), ...(event.messageReply?.attachments || [])]
+      .filter(a => ["photo", "png", "animated_image", "video", "audio"].includes(a.type))
+  );
+
+  const formMessage = {
+    body: `📢 Notification :\n────────────────\n${args.join(" ")}`,
+    attachment: attachments
   };
 
-  // Récupérer tous les groupes où le bot est présent
-  const allThreadID = (await threadsData.getAll())
-    .filter(t => t.isGroup && t.members.find(m => m.userID == api.getCurrentUserID())?.inGroup);
-
-  message.reply(`🎆 ${getLang("sendingNotification", allThreadID.length)} 🎆`);
-
-  let sendSuccess = 0;
-  const sendError = [];
-  const waitingSend = [];
-
-  for (const thread of allThreadID) {
-    const tid = thread.threadID;
+  let sent = 0;
+  let failed = [];
+  for (const thread of allThreads) {
     try {
-      waitingSend.push({
-        threadID: tid,
-        pending: api.sendMessage(formSend, tid)
-      });
-      await new Promise(resolve => setTimeout(resolve, delayPerGroup));
+      await api.sendMessage(formMessage, thread.threadID);
+      sent++;
     } catch (e) {
-      sendError.push(tid);
+      failed.push(thread.threadID);
     }
+    await new Promise(r => setTimeout(r, 250)); // delay per group
   }
 
-  for (const sended of waitingSend) {
-    try {
-      await sended.pending;
-      sendSuccess++;
-    } catch (e) {
-      const { errorDescription } = e;
-      if (!sendError.some(item => item.errorDescription == errorDescription)) {
-        sendError.push({
-          threadIDs: [sended.threadID],
-          errorDescription
-        });
-      } else {
-        sendError.find(item => item.errorDescription == errorDescription).threadIDs.push(sended.threadID);
-      }
-    }
-  }
-
-  let msgReport = "";
-  if (sendSuccess > 0) msgReport += `✅ Notification envoyée à ${sendSuccess} groupes 🎉\n`;
-  if (sendError.length > 0) {
-    msgReport += `❌ Erreurs lors de l'envoi à ${sendError.reduce((a,b) => a + b.threadIDs.length,0)} groupes :\n`;
-    msgReport += sendError.reduce((a,b) => a + `\n - ${b.errorDescription}\n   + ${b.threadIDs.join("\n   + ")}`, "");
-  }
-
-  message.reply(msgReport);
+  let replyMsg = `✅ Envoyé avec succès à ${sent} groupes`;
+  if (failed.length > 0) replyMsg += `\n❌ Échec pour ${failed.length} groupes : ${failed.join(", ")}`;
+  return message.reply(replyMsg);
 }
 
 module.exports = { nix, onStart };
