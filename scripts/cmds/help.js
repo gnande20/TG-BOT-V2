@@ -1,48 +1,70 @@
-const nix = {
-  name: "help",
-  version: "1.0",
-  aliases: ["h", "commands"],
-  description: "Affiche la liste des commandes disponibles",
-  author: "Testsuya Kuroko",
-  prefix: true,
-  category: "info",
-  type: "anyone",
-  cooldown: 5,
-  guide: "{pn} [nom_commande] - Affiche l'aide d'une commande spécifique ou la liste complète"
-};
+module.exports = {
+  nix: {
+    name: 'help',
+    prefix: false,
+    role: 0,
+    category: 'utility',
+    aliases: ['commands'],
+    author: 'ArYAN',
+    version: '0.0.1',
+  },
 
-async function onStart({ message, args, api, commandName, threadsData, usersData }) {
-  const utils = global.utils;
-  if (!utils) return message.reply("⚠️ Erreur : utils non disponible.");
+  async onStart({ message, args }) {
+    if (!global.teamnix || !global.teamnix.cmds) {
+      return message.reply("🚨 Command collection is not available.");
+    }
+    const commands = global.teamnix.cmds;
 
-  const { getPrefix } = utils;
-  const prefix = getPrefix ? await getPrefix() : ".";
+    if (args.length) {
+      const query = args[0].toLowerCase();
+      const cmd = [...commands.values()].find(
+        c => c.nix.name === query || (c.nix.aliases && c.nix.aliases.includes(query))
+      );
+      if (!cmd) return message.reply(`❌ No command called “${query}”.`);
+      const info = cmd.nix;
+      const detail = `
+🎆✨───────────────🎉
+🌟 Command: ${info.name}
+🍾 Aliases: ${info.aliases?.length ? info.aliases.join(', ') : 'None'}
+🥂 Can use: ${info.role === 2 ? 'Admin Only' : info.role === 1 ? 'VIP Only' : 'All Users'}
+🎇 Category: ${info.category?.toUpperCase() || 'UNCATEGORIZED'}
+🎊 Prefix Enabled?: ${info.prefix === false ? 'False' : 'True'}
+🎉 Author: ${info.author || 'Unknown'}
+🎆 Version: ${info.version || 'N/A'}
+✨───────────────🎆
+      `.trim();
+      return message.reply(detail);
+    }
 
-  const allCommands = Array.from(global.GoatBot.commands.keys())
-    .map(key => global.GoatBot.commands.get(key).config)
-    .filter(cmd => cmd.category && cmd.type !== "hidden");
+    const cats = {};
+    [...commands.values()]
+      .filter((command, index, self) =>
+        index === self.findIndex((c) => c.nix.name === command.nix.name)
+      )
+      .forEach(c => {
+        const cat = c.nix.category || 'UNCATEGORIZED';
+        if (!cats[cat]) cats[cat] = [];
+        if (!cats[cat].includes(c.nix.name)) cats[cat].push(c.nix.name);
+      });
 
-  if (!args[0]) {
-    // Liste de toutes les commandes
-    const cmdList = allCommands
-      .map(cmd => `• ${prefix}${cmd.name} - ${cmd.description || "Pas de description"}`)
-      .join("\n");
-    return message.reply(`📜 Liste des commandes :\n────────────────\n${cmdList}`);
+    let msg = '';
+    Object.keys(cats).sort().forEach(cat => {
+      msg += `🎆╔═══『 ${cat.toUpperCase()} 』═══🎆\n`;
+      cats[cat].sort().forEach(n => {
+        msg += `🎉 │ ${n}\n`;
+      });
+      msg += `🎊╚════════════════🎊\n`;
+    });
+
+    msg += `
+✨╔══════════════╗✨
+🥂 Total commands: ${[...new Set(commands.values())].length}
+🍾 A Powerful Telegram Bot
+🎇 Author: Aryan Rayhan
+🎆╚══════════════╝🎆
+「 Nix Bot 」🎉
+    `.trim();
+
+    await message.reply(msg);
   }
-
-  // Détails d'une commande spécifique
-  const cmdName = args[0].toLowerCase();
-  const cmd = allCommands.find(c => c.name === cmdName || (c.aliases && c.aliases.includes(cmdName)));
-  if (!cmd) return message.reply(`❌ Commande "${cmdName}" introuvable.`);
-  
-  return message.reply(
-    `📌 Détails de la commande : ${cmd.name}\n────────────────\n` +
-    `Description : ${cmd.description || "Pas de description"}\n` +
-    `Alias : ${cmd.aliases.length > 0 ? cmd.aliases.join(", ") : "Aucun"}\n` +
-    `Catégorie : ${cmd.category}\n` +
-    `Cooldown : ${cmd.cooldown || 0}s\n` +
-    `Guide : ${cmd.guide || "Aucun"}`
-  );
-}
-
-module.exports = { nix, onStart };
+};
