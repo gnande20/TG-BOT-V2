@@ -5,12 +5,12 @@ const nix = {
   version: "2026",
   aliases: ["calladmin", "contactadmin"],
   description: "Send reports or feedback to bot admin",
-  author: "Kyo soma",
+  author: "Testsuya Kuroko",
   prefix: true,
   category: "CONTACTS ADMIN",
   type: "anyone",
   cooldown: 5,
-  guide: "{pn}callad <message>"
+  guide: "{pn}callad <message> (répondre à une image facultatif)"
 };
 
 async function onStart({ bot, args = [], message, event, usersData, threadsData }) {
@@ -19,31 +19,52 @@ async function onStart({ bot, args = [], message, event, usersData, threadsData 
   const senderID = event?.senderID;
   const threadID = event?.threadID;
   const isGroup = event?.isGroup || false;
-  const config = bot?.config || {};
 
-  // ❌ Validation simplifiée sans getLang
-  if (!args[0]) return message.reply("⚠️ | Veuillez entrer un message à envoyer aux admins.");
-  if (!config.adminBot || config.adminBot.length === 0) return message.reply("⚠️ | Aucun admin configuré pour recevoir les messages.");
+  // ⚠️ Configuration de ton UID comme admin
+  const admins = ["8286999004"]; // <-- Ton UID
+  bot.config = bot.config || {};
+  bot.config.adminBot = admins;
 
+  // ⚠️ Vérifie le message
+  if (!args[0] && !event?.attachments?.length && !event?.messageReply?.attachments?.length) {
+    return message.reply("⚠️ | Veuillez entrer un message ou répondre à un média.");
+  }
+
+  // Récupère le nom de l’utilisateur
   const senderName = await usersData.getName(senderID);
-  const threadName = isGroup ? (await threadsData.get(threadID)).threadName : "";
+  const threadName = isGroup ? (await threadsData.get(threadID))?.threadName : "";
 
-  const msgHeader = `==📨 CALL ADMIN 2026 📨==\n- User: ${senderName}\n- UserID: ${senderID}` + (isGroup ? `\n- Group: ${threadName}` : "");
+  // Prépare le message à envoyer
+  let attachments = [];
+
+  if (event?.attachments?.length) {
+    attachments = attachments.concat(
+      event.attachments.filter(a => mediaTypes.includes(a.type)).map(a => a.url)
+    );
+  }
+  if (event?.messageReply?.attachments?.length) {
+    attachments = attachments.concat(
+      event.messageReply.attachments.filter(a => mediaTypes.includes(a.type)).map(a => a.url)
+    );
+  }
+
+  const msgHeader = `==📨 CALL ADMIN 2026 📨==\n- User: ${senderName}\n- UserID: ${senderID}` +
+    (isGroup ? `\n- Group: ${threadName}` : "");
+
   const formMessage = {
     body: msgHeader + `\nContent: ${args.join(" ")}`,
     mentions: [{ id: senderID, tag: senderName }],
-    attachment: [] // Simplifié: tu peux gérer les attachments si besoin
+    attachment: attachments.length ? attachments : undefined
   };
 
-  for (const adminID of config.adminBot) {
-    try {
-      await bot.api.sendMessage(formMessage, adminID);
-    } catch (err) {
-      console.error(`Failed to send to ${adminID}`, err);
-    }
+  // Envoie à l’admin
+  try {
+    await bot.api.sendMessage(formMessage, admins[0]); // Comme tu es le seul admin
+    message.reply(`✅ Message envoyé à l'admin (${admins[0]}).`);
+  } catch (err) {
+    console.error(err);
+    message.reply("❌ | Échec de l'envoi au admin.");
   }
-
-  message.reply("✅ | Message sent to admin(s).");
 }
 
 module.exports = { nix, onStart };
