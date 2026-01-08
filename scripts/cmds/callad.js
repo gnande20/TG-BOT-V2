@@ -5,7 +5,7 @@ const nix = {
   version: "2026",
   aliases: ["calladmin", "contactadmin"],
   description: "Send reports or feedback to bot admin",
-  author: "Testsuya Kuroko",
+  author: "Kyo soma",
   prefix: true,
   category: "CONTACTS ADMIN",
   type: "anyone",
@@ -13,7 +13,7 @@ const nix = {
   guide: "{pn}callad <message>"
 };
 
-async function onStart({ bot, args = [], message, event, getLang, usersData, threadsData }) {
+async function onStart({ bot, args = [], message, event, usersData, threadsData }) {
   if (!message) message = { reply: (...text) => console.log(...text) };
 
   const senderID = event?.senderID;
@@ -21,8 +21,9 @@ async function onStart({ bot, args = [], message, event, getLang, usersData, thr
   const isGroup = event?.isGroup || false;
   const config = bot?.config || {};
 
-  if (!args[0]) return message.reply(getLang("missingMessage"));
-  if (!config.adminBot || config.adminBot.length === 0) return message.reply(getLang("noAdmin"));
+  // ❌ Validation simplifiée sans getLang
+  if (!args[0]) return message.reply("⚠️ | Veuillez entrer un message à envoyer aux admins.");
+  if (!config.adminBot || config.adminBot.length === 0) return message.reply("⚠️ | Aucun admin configuré pour recevoir les messages.");
 
   const senderName = await usersData.getName(senderID);
   const threadName = isGroup ? (await threadsData.get(threadID)).threadName : "";
