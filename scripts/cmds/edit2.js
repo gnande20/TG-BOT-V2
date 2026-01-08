@@ -16,6 +16,7 @@ const nix = {
 };
 
 async function onStart({ bot, args = [], message, event }) {
+  // Fallback pour message.reply
   if (!message) message = { reply: (...text) => console.log(...text) };
 
   const prompt = args.join(" ");
@@ -23,23 +24,35 @@ async function onStart({ bot, args = [], message, event }) {
 
   try {
     const params = { prompt };
-    if (event?.messageReply?.attachments?.[0]) params.imgurl = event.messageReply.attachments[0].url;
+
+    // Gestion sécurisée des images attachées
+    if (event?.messageReply?.attachments?.[0]?.url) {
+      params.imgurl = event.messageReply.attachments[0].url;
+    }
 
     const res = await axios.get("https://gemini-edit-omega.vercel.app/edit", { params });
-    if (!res.data?.images?.[0]) return message.reply("❌ | Failed to get image.");
+    const imageBase64 = res.data?.images?.[0];
 
-    const base64 = res.data.images[0].replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64, "base64");
+    if (!imageBase64) return message.reply("❌ | Failed to get image.");
+
+    // Conversion base64 → buffer
+    const buffer = Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ""), "base64");
+
+    // Gestion cache
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
     const imgPath = path.join(cacheDir, `${Date.now()}.png`);
     fs.writeFileSync(imgPath, buffer);
 
+    // Envoi de l'image
     await message.reply({ attachment: fs.createReadStream(imgPath) });
+
+    // Suppression sécurisée
     fs.unlinkSync(imgPath);
+
   } catch (err) {
-    console.error(err);
-    message.reply("❌ | Error generating/editing image.");
+    console.error("❌ Edit2 API error:", err.response?.data || err.message || err);
+    return message.reply("❌ | Error generating/editing image.");
   }
 }
 
