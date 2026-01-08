@@ -2,9 +2,6 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 const cheerio = require("cheerio");
-const { execSync } = require("child_process");
-
-const { utils, GoatBot, client } = global;
 
 const nix = {
   name: "cmd",
@@ -19,32 +16,38 @@ const nix = {
   guide: "{pn} load <file>\n{pn} unload <file>\n{pn} install <url/code> <file>"
 };
 
-async function onStart({ bot, args = [], message, msg, usages, getLang, event }) {
+async function onStart({ bot, args = [], message, event, getLang }) {
   if (!message) message = { reply: (...text) => console.log(...text) };
 
   const subCommand = (args[0] || "").toLowerCase();
-  const { loadScripts, unloadScripts, log } = utils;
+
+  // 🔹 Vérification utils exist
+  const utils = global.utils || {};
+  const GoatBot = global.GoatBot || {};
+  const loadScripts = utils.loadScripts || (async () => ({ status: "failed", error: new Error("loadScripts missing") }));
+  const unloadScripts = utils.unloadScripts || (async () => ({ status: "failed", error: new Error("unloadScripts missing") }));
+  const log = utils.log || { dev: () => {} };
 
   try {
     // ——— LOAD ———
     if (subCommand === "load") {
       const fileName = args[1];
-      if (!fileName) return message.reply(getLang("missingFileName"));
-      const infoLoad = loadScripts("cmds", fileName, log, GoatBot.configCommands, bot, null, null, null, null, null, null, getLang);
+      if (!fileName) return message.reply(getLang ? getLang("missingFileName") : "⚠️ | Missing file name.");
+      const infoLoad = await loadScripts("cmds", fileName, log, GoatBot.configCommands || {}, bot, null, null, null, null, null, null, getLang);
       return message.reply(infoLoad.status === "success"
-        ? getLang("loaded", infoLoad.name)
-        : getLang("loadedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message)
+        ? (getLang ? getLang("loaded", infoLoad.name) : `✅ Loaded ${infoLoad.name}`)
+        : `❌ Failed to load ${infoLoad.name}: ${infoLoad.error?.message || infoLoad.error}`
       );
     }
 
     // ——— UNLOAD ———
     if (subCommand === "unload") {
       const fileName = args[1];
-      if (!fileName) return message.reply(getLang("missingCommandNameUnload"));
-      const infoUnload = unloadScripts("cmds", fileName, GoatBot.configCommands, getLang);
+      if (!fileName) return message.reply(getLang ? getLang("missingCommandNameUnload") : "⚠️ | Missing command name.");
+      const infoUnload = await unloadScripts("cmds", fileName, GoatBot.configCommands || {}, getLang);
       return message.reply(infoUnload.status === "success"
-        ? getLang("unloaded", infoUnload.name)
-        : getLang("unloadedError", infoUnload.name, infoUnload.error.name, infoUnload.error.message)
+        ? (getLang ? getLang("unloaded", infoUnload.name) : `✅ Unloaded ${infoUnload.name}`)
+        : `❌ Failed to unload ${infoUnload.name}: ${infoUnload.error?.message || infoUnload.error}`
       );
     }
 
@@ -52,37 +55,36 @@ async function onStart({ bot, args = [], message, msg, usages, getLang, event })
     if (subCommand === "install") {
       let urlOrCode = args[1];
       let fileName = args[2];
-      if (!urlOrCode || !fileName) return message.reply(getLang("missingUrlCodeOrFileName"));
+      if (!urlOrCode || !fileName) return message.reply(getLang ? getLang("missingUrlCodeOrFileName") : "⚠️ | Missing URL/code or file name.");
 
       let rawCode;
-
       if (urlOrCode.startsWith("http")) {
         const domain = new URL(urlOrCode).hostname;
-        if (!fileName.endsWith(".js")) return message.reply(getLang("missingFileNameInstall"));
+        if (!fileName.endsWith(".js")) return message.reply(getLang ? getLang("missingFileNameInstall") : "⚠️ | File name must end with .js");
 
-        // Convert URLs for Pastebin / GitHub
         if (domain === "pastebin.com") urlOrCode = urlOrCode.replace(/https:\/\/pastebin\.com\/(?!raw\/)(.*)/, "https://pastebin.com/raw/$1");
         if (domain === "github.com") urlOrCode = urlOrCode.replace(/https:\/\/github\.com\/(.*)\/blob\/(.*)/, "https://raw.githubusercontent.com/$1/$2");
 
-        rawCode = (await axios.get(urlOrCode)).data;
+        const res = await axios.get(urlOrCode);
+        rawCode = res.data;
+
         if (domain === "savetext.net") {
           const $ = cheerio.load(rawCode);
           rawCode = $("#content").text();
         }
       } else {
-        rawCode = event?.body.slice(event.body.indexOf(fileName) + fileName.length + 1);
+        rawCode = event?.body?.slice(event.body.indexOf(fileName) + fileName.length + 1) || "";
       }
 
-      if (!rawCode) return message.reply(getLang("invalidUrlOrCode"));
+      if (!rawCode) return message.reply(getLang ? getLang("invalidUrlOrCode") : "⚠️ | Cannot get code.");
 
-      const infoLoad = loadScripts("cmds", fileName, log, GoatBot.configCommands, bot, null, null, null, null, null, null, getLang, rawCode);
+      const infoLoad = await loadScripts("cmds", fileName, log, GoatBot.configCommands || {}, bot, null, null, null, null, null, null, getLang, rawCode);
       return message.reply(infoLoad.status === "success"
-        ? getLang("installed", infoLoad.name, path.join(__dirname, fileName))
-        : getLang("installedError", infoLoad.name, infoLoad.error.name, infoLoad.error.message)
+        ? (getLang ? getLang("installed", infoLoad.name, path.join(__dirname, fileName)) : `✅ Installed ${infoLoad.name}`)
+        : `❌ Failed to install ${infoLoad.name}: ${infoLoad.error?.message || infoLoad.error}`
       );
     }
 
-    // ——— UNKNOWN ———
     return message.reply("⚠️ | Unknown sub-command. Use load, unload, or install.");
   } catch (err) {
     console.error(err);
