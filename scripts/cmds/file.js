@@ -1,58 +1,36 @@
-const fs = require("fs");
-const path = require("path");
-
-module.exports = {
-  nix: {
-    name: "file",
-    aliases: ["files"],
-    version: "2026 Edition",
-    author: "Testsuya Kuroko",
-    prefix: true,
-    category: "𝗢𝗪𝗡𝗘𝗥",
-    type: "anyone",
-    cooldown: 5,
-    description: "Envoie un fichier du bot",
-    guide: "file <nom_du_fichier>"
-  },
-
-  async onStart({ event, args, message }) {
-    const senderID = event.senderID;
-
-    // 🔐 Autorisations
-    const permission = [
-      "8286999004",
-      ""
-    ];
-
-    if (!permission.includes(senderID)) {
-      return message.reply(
-        "🎇✨ 𝐀𝐂𝐂𝐄̀𝐒 𝐑𝐄𝐅𝐔𝐒𝐄́ ✨🎇\n\n❌ Vous n’avez pas la permission.\n👑 Commande réservée au maître."
-      );
-    }
-
-    // 📂 Nom du fichier
-    const fileName = args[0];
-    if (!fileName) {
-      return message.reply(
-        "⚠️ Utilisation incorrecte\n\n📌 Exemple : file help"
-      );
-    }
-
-    // 🛡️ Sécurité
-    if (fileName.includes("..") || fileName.includes("/")) {
-      return message.reply("🚫 Nom de fichier invalide.");
-    }
-
-    const filePath = path.join(__dirname, `${fileName}.js`);
-
-    if (!fs.existsSync(filePath)) {
-      return message.reply(`❌ Fichier introuvable : ${fileName}.js`);
-    }
-
-    // 📤 Envoi du fichier en pièce jointe
-    return message.reply({
-      body: `📦 Fichier : ${fileName}.js`,
-      attachment: fs.createReadStream(filePath)
-    });
-  }
+const nix = {
+  name: "file",
+  version: "1.0",
+  aliases: [],
+  description: "Example command with safe senderID handling",
+  author: "ArYAN",
+  prefix: true,
+  category: "utility",
+  type: "anyone",
+  cooldown: 5,
+  guide: "{pn}file"
 };
+
+async function onStart({ bot, args = [], message, event }) {
+  // Fallback pour message.reply si message non défini
+  if (!message) message = { reply: (...text) => console.log(...text) };
+
+  // Récupération universelle du senderID
+  const senderID =
+    event?.senderID ||
+    event?.author ||
+    message?.senderID ||
+    message?.author ||
+    null;
+
+  if (!senderID) {
+    return message.reply("❌ Impossible de récupérer ton ID.");
+  }
+
+  // Exemple d'action
+  const threadID = event?.threadID || message?.threadID || "INCONNU";
+
+  message.reply(`✅ Commande exécutée par ${senderID} dans le thread ${threadID}`);
+}
+
+module.exports = { nix, onStart };
