@@ -21,7 +21,7 @@ async function onStart({ bot, args = [], message, event }) {
   const isGroup = event?.isGroup || false;
 
   // ⚠️ Ton UID comme admin
-  const admins = ["8286999004"];
+  const admins = ["8286999004","-1003528587573"];
   bot.config = bot.config || {};
   bot.config.adminBot = admins;
 
