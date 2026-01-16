@@ -4,7 +4,7 @@ const path = require("path");
 
 const nix = {
   name: "pinterest2",
-  version: "1.0",
+  version: "1.0.0",
   aliases: ["pin2"],
   description: "Search and fetch images from Pinterest",
   author: "MarianCross",
@@ -12,39 +12,54 @@ const nix = {
   category: "image",
   type: "anyone",
   cooldown: 60,
-  guide: "{pn}pinterest <keyword> -<number of images>"
+  guide: "{pn}pinterest2 <mot-clé> -<nombre>"
 };
 
-async function onStart({ bot, args = [], message, event, getLang }) {
-  if (!message) message = { reply: (...text) => console.log(...text) };
+async function onStart({ args, message }) {
+  if (!message) return;
+
   try {
-    const keySearch = args.join(" ");
-    if (!keySearch) return message.reply("⚠️ | Please provide search keywords.");
-
-    let numberSearch = parseInt(keySearch.split("-").pop().trim()) || 1;
-    numberSearch = Math.min(Math.max(numberSearch, 1), 12);
-
-    const query = keySearch.split("-")[0].trim();
-    const res = await axios.get(`https://api-samirxyz.onrender.com/api/Pinterest?query=${encodeURIComponent(query)}&number=${numberSearch}&apikey=global`);
-
-    if (!res.data || !Array.isArray(res.data) || res.data.length === 0)
-      return message.reply("⚠️ | No images found.");
-
-    const images = [];
-    for (let i = 0; i < res.data.length; i++) {
-      const url = res.data[i];
-      const imgBuffer = (await axios.get(url, { responseType: "arraybuffer" })).data;
-      const tmpPath = path.join(__dirname, "tmp", `${i}.jpg`);
-      await fs.outputFile(tmpPath, imgBuffer);
-      images.push(fs.createReadStream(tmpPath));
+    const input = args.join(" ");
+    if (!input) {
+      return message.reply("⚠️ | Veuillez fournir des mots-clés.");
     }
 
-    await message.reply({ attachment: images, body: `Here are ${images.length} images for "${query}"` });
+    let number = parseInt(input.split("-").pop().trim());
+    if (isNaN(number)) number = 1;
+    number = Math.min(Math.max(number, 1), 12);
 
-    await fs.remove(path.join(__dirname, "tmp"));
-  } catch (err) {
-    console.error(err);
-    message.reply(`❌ | Error fetching images: ${err.message}`);
+    const query = input.split("-")[0].trim();
+
+    const res = await axios.get(
+      `https://api-samirxyz.onrender.com/api/Pinterest?query=${encodeURIComponent(query)}&number=${number}&apikey=global`
+    );
+
+    if (!Array.isArray(res.data) || res.data.length === 0) {
+      return message.reply("⚠️ | Aucune image trouvée.");
+    }
+
+    const tmpDir = path.join(__dirname, "tmp");
+    await fs.ensureDir(tmpDir);
+
+    const attachments = [];
+
+    for (let i = 0; i < res.data.length; i++) {
+      const img = await axios.get(res.data[i], { responseType: "arraybuffer" });
+      const imgPath = path.join(tmpDir, `${i}.jpg`);
+      await fs.writeFile(imgPath, img.data);
+      attachments.push(fs.createReadStream(imgPath));
+    }
+
+    await message.reply({
+      body: `📌 Résultat pour : "${query}"`,
+      attachment: attachments
+    });
+
+    await fs.remove(tmpDir);
+
+  } catch (error) {
+    console.error(error);
+    message.reply("❌ | Erreur lors de la récupération des images.");
   }
 }
 
