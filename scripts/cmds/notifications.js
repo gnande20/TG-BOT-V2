@@ -1,71 +1,115 @@
-const nix = {
-  name: "notification",
-  version: "1.8",
-  aliases: ["notify", "noti"],
-  description: "Envoyer une notification à tous les groupes",
-  author: "Testsuya Kuroko",
-  prefix: true,
-  category: "owner",
-  type: "anyone",
-  cooldown: 5,
-  guide: "{pn} <message> - Envoie un message à tous les groupes"
-};
+const { getStreamsFromAttachment, log } = global.utils;
+const mediaTypes = ["photo", "png", "animated_image", "video", "audio"];
 
-async function onStart({ message, args, event, threadsData }) {
-  const api = global.client?.api;
-  const botID = global.client?.userID;
-
-  if (!api || !botID) {
-    return message.reply("❌ API du bot indisponible.");
-  }
-
-  if (!args.length && !(event.attachments || event.messageReply?.attachments)) {
-    return message.reply("⚠️ Entrez un message ou joignez un média.");
-  }
-
-  // 🔐 OWNER ONLY
-  const permission = ["8286999004", ""];
-  if (!permission.includes(event.senderID)) {
-    return message.reply("🚫 Commande réservée au propriétaire.");
-  }
-
-  // 📌 Tous les groupes
-  const allThreads = (await threadsData.getAll()).filter(
-    t => t.isGroup && t.members?.some(m => m.userID === botID)
-  );
-
-  await message.reply(`⏳ Notification en cours (${allThreads.length} groupes)...`);
-
-  // 📎 Pièces jointes (URL directes)
-  const attachments = [
-    ...(event.attachments || []),
-    ...(event.messageReply?.attachments || [])
-  ].filter(a =>
-    ["photo", "animated_image", "video", "audio"].includes(a.type)
-  ).map(a => a.url);
-
-  const formMessage = {
-    body: `📢 Notification\n━━━━━━━━━━━━━━\n${args.join(" ")}`,
-    attachment: attachments.length ? attachments : undefined
-  };
-
-  let sent = 0;
-  let failed = 0;
-
-  for (const thread of allThreads) {
-    try {
-      await api.sendMessage(formMessage, thread.threadID);
-      sent++;
-    } catch {
-      failed++;
+module.exports = {
+  config: {
+    name: "notification",
+    aliases: ["noti"],
+    version: "2.5",
+    author: "Messie Osango"
+    role: 2,
+    category: "system",
+    shortDescription: {
+      en: "Global notification",
+      fr: "Notification globale",
+      vi: "Thông báo toàn bộ"
+    },
+    longDescription: {
+      en: "Send a message to all groups",
+      fr: "Envoyer un message à tous les groupes",
+      vi: "Gửi tin nhắn đến tất cả nhóm"
+    },
+    guide: {
+      en: "{pn} <message>",
+      fr: "{pn} <message>",
+      vi: "{pn} <nội dung>"
     }
-    await new Promise(r => setTimeout(r, 350));
+  },
+
+  langs: {
+    en: {
+      noPermission: "🚫 You are not allowed to use this command.",
+      missingMessage: "Please enter the notification content.",
+      noGroup: "No group found.",
+      sending: "📢 Sending notification...",
+      report:
+        "📊 SEND REPORT\n─────────────────\n✅ Success: %1 groups\n❌ Failed: %2 groups\n─────────────────\nMessage:\n%3",
+      error: "❌ System error occurred."
+    },
+    fr: {
+      noPermission: "🚫 Accès refusé.",
+      missingMessage: "Veuillez entrer le contenu de la notification.",
+      noGroup: "Aucun groupe trouvé.",
+      sending: "📢 Envoi de la notification...",
+      report:
+        "📊 RAPPORT D'ENVOI\n─────────────────\n✅ Succès : %1 groupes\n❌ Échecs : %2 groupes\n─────────────────\nMessage :\n%3",
+      error: "❌ Une erreur système est survenue."
+    },
+    vi: {
+      noPermission: "🚫 Bạn không có quyền sử dụng lệnh này.",
+      missingMessage: "Vui lòng nhập nội dung thông báo.",
+      noGroup: "Không tìm thấy nhóm nào.",
+      sending: "📢 Đang gửi thông báo...",
+      report:
+        "📊 BÁO CÁO GỬI\n─────────────────\n✅ Thành công: %1 nhóm\n❌ Thất bại: %2 nhóm\n─────────────────\nNội dung:\n%3",
+      error: "❌ Đã xảy ra lỗi hệ thống."
+    }
+  },
+
+  onStart: async function ({ api, event, args, message, getLang }) {
+    const adminBot = global.GoatBot.config.adminBot;
+
+    if (!adminBot.includes(event.senderID))
+      return message.reply(getLang("noPermission"));
+
+    if (!args[0])
+      return message.reply(getLang("missingMessage"));
+
+    message.reply(getLang("sending"));
+
+    try {
+      const threadList = await api.getThreadList(200, null, ["INBOX"]);
+      const groupThreads = threadList.filter(t => t.isGroup);
+
+      if (groupThreads.length === 0)
+        return message.reply(getLang("noGroup"));
+
+      const content = args.join(" ");
+      let success = 0;
+      let failed = 0;
+
+      const attachments = await getStreamsFromAttachment(
+        event.attachments.filter(item => mediaTypes.includes(item.type))
+      );
+
+      for (const group of groupThreads) {
+        try {
+          await api.sendMessage(
+            {
+              body:
+                "╭━━━━━━━━━━━━━━━━╮\n" +
+                "┃ 📢 NOTIFICATION\n" +
+                "├────────────────\n" +
+                `┃ ${content}\n` +
+                "╰━━━━━━━━━━━━━━━━╯",
+              attachment: attachments
+            },
+            group.threadID
+          );
+          success++;
+          await new Promise(r => setTimeout(r, 300));
+        } catch (e) {
+          failed++;
+        }
+      }
+
+      return message.reply(
+        getLang("report", success, failed, content)
+      );
+
+    } catch (err) {
+      log.err("NOTIFICATION", err);
+      return message.reply(getLang("error"));
+    }
   }
-
-  let result = `✅ Envoyé à ${sent} groupes.`;
-  if (failed) result += `\n❌ Échec : ${failed} groupes.`;
-
-  return message.reply(result);
-}
-
-module.exports = { nix, onStart };
+};
